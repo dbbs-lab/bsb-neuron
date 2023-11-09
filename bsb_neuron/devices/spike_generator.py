@@ -17,7 +17,5 @@ class SpikeGenerator(NeuronDevice, classmap_entry="spike_generator"):
             for target in pop:
                 for location in self.locations.get_locations(target):
                     for synapse in location.section.synapses:
-                        if self.synapses is None or any(
-                            syn in str(synapse._pp) for syn in self.synapses
-                        ):
+                        if not self.synapses or synapse.synapse_name in self.synapses:
                             synapse.stimulate(**self.parameters)
