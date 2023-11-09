@@ -7,5 +7,5 @@ from .adapter import NeuronAdapter
 from .simulation import NeuronSimulation
 from . import devices
 
-__version__ = "0.0.0a0"
+__version__ = "0.0.0b0"
 __plugin__ = SimulationBackendPlugin(Simulation=NeuronSimulation, Adapter=NeuronAdapter)
