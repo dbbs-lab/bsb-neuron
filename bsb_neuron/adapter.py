@@ -201,6 +201,8 @@ class NeuronPopulation(list):
         # Boolean masking, kind of
         if getattr(item, "dtype", None) == bool or _all_bools(item):
             return NeuronPopulation([p for p, b in zip(self, item) if b])
+        elif getattr(item, "dtype", None) == int or _all_ints(item):
+            return NeuronPopulation([self[i] for i in item])
         else:
             return super().__getitem__(item)
 
@@ -208,6 +210,14 @@ class NeuronPopulation(list):
 def _all_bools(arr):
     try:
         return all(isinstance(b, bool) for b in arr)
+    except TypeError:
+        # Not iterable
+        return False
+
+
+def _all_ints(arr):
+    try:
+        return all(isinstance(b, int) for b in arr)
     except TypeError:
         # Not iterable
         return False
