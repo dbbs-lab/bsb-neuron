@@ -2,26 +2,26 @@ import contextlib
 import itertools
 import os
 import time
-import numpy as np
 import typing
 
-from neo import AnalogSignal
-
+import numpy as np
 from bsb.exceptions import AdapterError, DatasetNotFoundError
 from bsb.reporting import report
 from bsb.services import MPI
-from bsb.simulation.adapter import SimulatorAdapter, SimulationData
+from bsb.simulation.adapter import SimulationData, SimulatorAdapter
 from bsb.simulation.results import SimulationResult
 from bsb.storage import Chunk
+from neo import AnalogSignal
 
 if typing.TYPE_CHECKING:
     from bsb.simulation.simulation import Simulation
+
+    from .cell import NeuronCell
 
 
 class NeuronSimulationData(SimulationData):
     def __init__(self, simulation: "Simulation", result=None):
         super().__init__(simulation, result=result)
-        self.cells = dict()
         self.cid_offsets = dict()
         self.connections = dict()
         self.first_gid: int = None
@@ -167,16 +167,34 @@ class NeuronAdapter(SimulatorAdapter):
 
     def _map_transmitters(self, simulation, simdata):
         blocks = []
+        offset = 0
+        transmap = {}
+
         for cm, cs in simulation.get_connectivity_sets().items():
+            # For each connectivity set, determine how many unique transmitters they will place.
             pre, _ = cs.load_connections().as_globals().all()
-            pre[:, 0] += simdata.cid_offsets[cs.pre_type]
-            blocks.append(pre[:, :2])
-        if blocks:
-            blocks = np.unique(np.concatenate(blocks), axis=0)
-        return {
-            tuple(loc): gid + simdata.alloc[0]
-            for gid, loc in zip(itertools.count(), blocks)
-        }
+            all_cm_transmitters = np.unique(pre[:, :2])
+            # Now look up which transmitters are on our chunks
+            pre_c, _ = cs.load_connections().from_(simdata.chunks).as_globals().all()
+            our_cm_transmitters = np.unique(pre_c[:, :2])
+            # Look up the local ids of those transmitters
+            pre_lc, _ = cs.load_connections().from_(simdata.chunks).all()
+            local_cm_transmitters = np.unique(pre_lc[:, :2])
+
+            # Find the common indexes between the all the transmitters, and the
+            # transmitters on our chunk.
+            dtype = ", ".join([str(all_cm_transmitters.dtype)] * 2)
+            _, idx, _ = np.intersect1d(
+                our_cm_transmitters.view(dtype),
+                all_cm_transmitters.view(dtype),
+                assume_unique=True,
+                return_indices=True,
+            )
+            # Store a map of the local chunk transmitters to their GIDs
+            transmap[cm] = dict(zip(local_cm_transmitters, idx + offset))
+            # Offset by the total amount of transmitter GIDs used by this ConnSet.
+            offset += len(all_cm_transmitters)
+        return transmap
 
     def _create_population(self, simdata, cell_model, ps, offset):
         data = []
@@ -188,15 +206,16 @@ class NeuronAdapter(SimulatorAdapter):
 
         with fill_parameter_data(cell_model.parameters, data):
             instances = cell_model.create_instances(len(ps), *data)
-            simdata.populations[cell_model] = NeuronPopulation(instances)
-            for id, instance in zip(ps.load_ids(), instances):
-                cid = offset + id
-                instance.id = cid
-                instance.cell_model = cell_model
-                simdata.cells[cid] = instance
+            simdata.populations[cell_model] = NeuronPopulation(cell_model, instances)
 
 
 class NeuronPopulation(list):
+    def __init__(self, model: "NeuronCell", instances: list):
+        self._model = model
+        super().__init__(instances)
+        for instance in instances:
+            isinstance.cell_model = model
+
     def __getitem__(self, item):
         # Boolean masking, kind of
         if getattr(item, "dtype", None) == bool or _all_bools(item):

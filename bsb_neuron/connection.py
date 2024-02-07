@@ -1,16 +1,27 @@
-import numpy as np
+import typing
 
+import numpy as np
 from bsb import config
 from bsb.config import types
+from bsb.exceptions import AdapterError
 from bsb.simulation.connection import ConnectionModel
 from bsb.simulation.parameter import Parameter
 
+if typing.TYPE_CHECKING:
+    from bsb.storage import ConnectivitySet
+
+    from .adapter import NeuronSimulationData
+    from .simulation import NeuronSimulation
+
 
 @config.dynamic(
-    attr_name="model_strategy", required=False, default="transceiver", auto_classmap=True
+    attr_name="model_strategy",
+    required=False,
+    default="transceiver",
+    auto_classmap=True,
 )
 class NeuronConnection(ConnectionModel):
-    def create_connections(self, simulation, simdata, connections, gids):
+    def create_connections(self, simulation, simdata, connections):
         raise NotImplementedError(
             "Cell models should implement the `create_connections` method."
         )
@@ -37,25 +48,45 @@ class TransceiverModel(NeuronConnection, classmap_entry="transceiver"):
     parameters = config.list(type=Parameter)
     source = config.attr(type=str)
 
-    def create_connections(self, simulation, simdata, cs):
+    def create_connections(
+        self,
+        simulation: "NeuronSimulation",
+        simdata: "NeuronSimulationData",
+        cs: "ConnectivitySet",
+    ):
         self.create_transmitters(simdata, cs)
         self.create_receivers(simdata, cs)
 
-    def create_transmitters(self, simdata, cs):
-        pre, _ = cs.load_connections().from_(simdata.chunks).as_globals().all()
-        pre[:, 0] += simdata.cid_offsets[cs.pre_type]
+    def create_transmitters(
+        self, simdata: "NeuronSimulationData", cs: "ConnectivitySet"
+    ):
+        for cm, pop in simdata.populations.items():
+            if cm.cell_type == cs.pre_type:
+                break
+        else:
+            raise AdapterError(f"No pop found for {cs.pre_type.name}")
+        pre, _ = cs.load_connections().from_(simdata.chunks).all()
+        transmitters = simdata.transmap[self]
         locs = np.unique(pre[:, :2], axis=0)
         for loc in locs:
-            gid = simdata.transmap[tuple(loc)]
-            simdata.cells[gid].insert_transmitter(gid, (loc[1], 0), source=self.source)
+            gid = transmitters[tuple(loc)]
+            cell = pop[loc[0]]
+            # NEURON only allows 1 spike detector per branch,
+            # so we insert it in the first point on the branch.
+            point = (loc[1], 0)
+            cell.insert_transmitter(gid, point, source=self.source)
 
-    def create_receivers(self, simdata, cs):
-        pre, post = cs.load_connections().incoming().to(simdata.chunks).as_globals().all()
-        pre[:, 0] += simdata.cid_offsets[cs.pre_type]
-        post[:, 0] += simdata.cid_offsets[cs.post_type]
+    def create_receivers(self, simdata: "NeuronSimulationData", cs: "ConnectivitySet"):
+        for post_cm, post_pop in simdata.populations.items():
+            if post_cm.cell_type == cs.post_type:
+                break
+        else:
+            raise AdapterError(f"No pop found for {cs.pre_type.name}")
+        pre, post = cs.load_connections().incoming().to(simdata.chunks).all()
+        transmitters = simdata.transmap[self]
         for pre_loc, post_loc in zip(pre[:, :2], post):
-            gid = simdata.transmap[tuple(pre_loc)]
-            cell = simdata.cells[post_loc[0]]
+            gid = transmitters[tuple(pre_loc)]
+            cell = post_pop[post_loc[0]]
             for spec in self.synapses:
                 cell.insert_receiver(
                     gid,
