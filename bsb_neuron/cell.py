@@ -1,7 +1,8 @@
 import itertools
 
+from arborize import ModelDefinition, define_model
 from bsb import config
-from bsb.config import types
+from bsb.config.types import object_
 from bsb.simulation.cell import CellModel
 from typing import TYPE_CHECKING
 
@@ -44,9 +45,31 @@ class NeuronCell(CellModel):
         return instance
 
 
+class ArborizeModelTypeHandler(object_):
+    @property
+    def __name__(self):
+        return "arborized model definition"
+
+    def __call__(self, value):
+        if isinstance(value, dict):
+            print("Using dict based model definition")
+            model = define_model(value)
+            model._cfg_inv = value
+            return model
+        else:
+            return super().__call__(value)
+
+    def __inv__(self, value):
+        inv_value = super().__inv__(value)
+        if isinstance(inv_value, ModelDefinition):
+            # fixme: not good, should at least be converted back to a compatible dict
+            #  definition
+            return str(inv_value)
+
+
 @config.node
 class ArborizedModel(NeuronCell, classmap_entry="arborize"):
-    model = config.attr(type=types.object_(), required=True)
+    model = config.attr(type=ArborizeModelTypeHandler(), required=True)
     _schematics = {}
 
     def create(self, id, pos, morpho, rot, additional):
