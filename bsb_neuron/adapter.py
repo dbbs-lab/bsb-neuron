@@ -174,13 +174,13 @@ class NeuronAdapter(SimulatorAdapter):
         for cm, cs in simulation.get_connectivity_sets().items():
             # For each connectivity set, determine how many unique transmitters they will place.
             pre, _ = cs.load_connections().as_globals().all()
-            all_cm_transmitters = np.unique(pre[:, :2])
+            all_cm_transmitters = np.unique(pre[:, :2], axis=0)
             # Now look up which transmitters are on our chunks
             pre_c, _ = cs.load_connections().from_(simdata.chunks).as_globals().all()
-            our_cm_transmitters = np.unique(pre_c[:, :2])
+            our_cm_transmitters = np.unique(pre_c[:, :2], axis=0)
             # Look up the local ids of those transmitters
             pre_lc, _ = cs.load_connections().from_(simdata.chunks).all()
-            local_cm_transmitters = np.unique(pre_lc[:, :2])
+            local_cm_transmitters = np.unique(pre_lc[:, :2], axis=0)
 
             # Find the common indexes between the all the transmitters, and the
             # transmitters on our chunk.
@@ -192,7 +192,9 @@ class NeuronAdapter(SimulatorAdapter):
                 return_indices=True,
             )
             # Store a map of the local chunk transmitters to their GIDs
-            transmap[cm] = dict(zip(local_cm_transmitters, idx + offset))
+            transmap[cm] = dict(
+                zip(map(tuple, local_cm_transmitters), map(int, idx + offset))
+            )
             # Offset by the total amount of transmitter GIDs used by this ConnSet.
             offset += len(all_cm_transmitters)
         return transmap
