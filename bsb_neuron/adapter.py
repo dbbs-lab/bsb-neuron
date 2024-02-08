@@ -8,7 +8,7 @@ import numpy as np
 from bsb.exceptions import AdapterError, DatasetNotFoundError
 from bsb.reporting import report
 from bsb.services import MPI
-from bsb.simulation.adapter import SimulationData, SimulatorAdapter
+from bsb.simulation.adapter import AdapterProgress, SimulatorAdapter, SimulationData
 from bsb.simulation.results import SimulationResult
 from bsb.storage import Chunk
 from neo import AnalogSignal
@@ -24,7 +24,6 @@ class NeuronSimulationData(SimulationData):
         super().__init__(simulation, result=result)
         self.cid_offsets = dict()
         self.connections = dict()
-        self.first_gid: int = None
 
 
 class NeuronResult(SimulationResult):
@@ -103,28 +102,30 @@ class NeuronAdapter(SimulatorAdapter):
                 simdata.chunk_node_map[chunk] = node
         simdata.chunks = simdata.node_chunk_alloc[MPI.get_rank()]
 
-    def run(self, simulation: "Simulation"):
-        if simulation not in self.simdata:
-            raise AdapterError("Simulation was not prepared")
+    def run(self, *simulations: "Simulation"):
+        unprepared = [sim for sim in simulations if sim not in self.simdata]
+        if unprepared:
+            raise AdapterError(f"Unprepared for simulations: {', '.join(unprepared)}")
         try:
             report("Simulating...", level=2)
             pc = self.engine.ParallelContext()
             pc.set_maxstep(10)
             self.engine.finitialize(self.initial)
-            simulation.start_progress(simulation.duration)
-            for oi, i in simulation.step_progress(simulation.duration, 1):
-                t = time.time()
+            duration = max(sim.duration for sim in simulations)
+            progress = AdapterProgress(duration)
+            for oi, i in progress.steps(step=1):
                 pc.psolve(i)
-                simulation.progress(i)
-                if os.path.exists("interrupt_neuron"):
-                    report("Iterrupt requested. Stopping simulation.", level=1)
-                    break
+                tick = progress.tick(i)
+                for listener in self._progress_listeners:
+                    listener(simulations, tick)
+            progress.complete()
             report("Finished simulation.", level=2)
         finally:
-            result = self.simdata[simulation].result
-            del self.simdata[simulation]
+            results = [self.simdata[sim].result for sim in simulations]
+            for sim in simulations:
+                del self.simdata[sim]
 
-        return result
+        return results
 
     def create_neurons(self, simulation):
         simdata = self.simdata[simulation]

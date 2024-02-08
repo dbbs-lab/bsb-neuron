@@ -1,6 +1,11 @@
 import importlib
+from copy import copy
+
+import numpy as np
 import unittest
 
+from bsb.simulation import get_simulation_adapter
+from scipy.signal import find_peaks
 from arborize import Schematic, define_model
 from bsb_test import (
     ConfigFixture,
@@ -9,6 +14,9 @@ from bsb_test import (
     RandomStorageFixture,
 )
 
+from bsb.config import from_file
+from bsb.core import Scaffold
+from bsb_test import get_config_path, RandomStorageFixture
 from bsb_neuron.cell import ArborizedModel
 
 
@@ -37,6 +45,21 @@ class TestNeuronMinimal(
         sim = self.network.simulations.test
         self.network.run_simulation("test")
         self.assertAlmostEqual(h.t, sim.duration, msg="sim duration incorrect")
+
+    def test_double_sim_minimal(self):
+        from neuron import h
+
+        config = from_file(min_nrn_config)
+        scaffold = Scaffold(config, self.storage)
+        scaffold.compile()
+        sim = scaffold.simulations.test
+        scaffold = Scaffold(copy(config), self.storage)
+        sim2 = scaffold.simulations.test
+        sim2.duration *= 2
+        adapter = get_simulation_adapter(sim.simulator)
+        adapter.simulate(sim, sim2)
+
+        self.assertAlmostEqual(h.t, sim2.duration, msg="sim duration incorrect")
 
 
 @unittest.skipIf(not neuron_installed(), "NEURON is not installed")

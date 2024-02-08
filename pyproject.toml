@@ -18,6 +18,12 @@ dependencies = [
 [project.entry-points."bsb.simulation_backends"]
 neuron = "bsb_neuron"
 
+[project.optional-dependencies]
+test = [
+    "bsb-json>=0.0.0b0",
+    "bsb-test>=0.0.0b0"
+]
+
 [tool.flit.module]
 name = "bsb_neuron"
 
