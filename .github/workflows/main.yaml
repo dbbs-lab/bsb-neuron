@@ -1,4 +1,4 @@
-name: Build and test BSB JSON
+name: Test BSB NEURON adapter
 
 on: [push, pull_request]
 
