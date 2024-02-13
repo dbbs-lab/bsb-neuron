@@ -3,9 +3,10 @@ NEURON simulator adapter for the BSB framework
 """
 
 from bsb.simulation import SimulationBackendPlugin
+
+from . import devices
 from .adapter import NeuronAdapter
 from .simulation import NeuronSimulation
-from . import devices
 
 __version__ = "0.0.0b2"
 __plugin__ = SimulationBackendPlugin(Simulation=NeuronSimulation, Adapter=NeuronAdapter)

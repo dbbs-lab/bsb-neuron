@@ -1,5 +1,6 @@
-from ..device import NeuronDevice
 import numpy as np
+
+from ..device import NeuronDevice
 
 
 class IonRecorder(NeuronDevice):
@@ -60,5 +61,7 @@ class IonicCurrentRecorder(_IonicRecorder, slug="current", record=_record_i):
     pass
 
 
-class IonicConcentrationRecorder(_IonicRecorder, slug="concentration", record=_record_c):
+class IonicConcentrationRecorder(
+    _IonicRecorder, slug="concentration", record=_record_c
+):
     pass
