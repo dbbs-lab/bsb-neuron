@@ -66,7 +66,7 @@ class TransceiverModel(NeuronConnection, classmap_entry="transceiver"):
         else:
             raise AdapterError(f"No pop found for {cs.pre_type.name}")
         pre, _ = cs.load_connections().from_(simdata.chunks).all()
-        transmitters = simdata.transmap[self]
+        transmitters = simdata.transmap[self]["transmitters"]
         locs = np.unique(pre[:, :2], axis=0)
         for loc in locs:
             gid = transmitters[tuple(loc)]
@@ -83,7 +83,7 @@ class TransceiverModel(NeuronConnection, classmap_entry="transceiver"):
         else:
             raise AdapterError(f"No pop found for {cs.pre_type.name}")
         pre, post = cs.load_connections().incoming().to(simdata.chunks).all()
-        transmitters = simdata.transmap[self]
+        transmitters = simdata.transmap[self]["receivers"]
         for pre_loc, post_loc in zip(pre[:, :2], post):
             gid = transmitters[tuple(pre_loc)]
             cell = post_pop[post_loc[0]]

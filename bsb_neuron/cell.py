@@ -1,10 +1,10 @@
 import itertools
+from typing import TYPE_CHECKING
 
 from arborize import ModelDefinition, define_model
 from bsb import config
 from bsb.config.types import object_
 from bsb.simulation.cell import CellModel
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from bsb.morphologies import MorphologySet
@@ -14,7 +14,9 @@ if TYPE_CHECKING:
     attr_name="model_strategy", required=False, default="arborize", auto_classmap=True
 )
 class NeuronCell(CellModel):
-    def create_instances(self, count, pos, morpho: "MorphologySet", rot, additional):
+    def create_instances(
+        self, count, ids, pos, morpho: "MorphologySet", rot, additional
+    ):
         def dictzip():
             yield from (
                 dict(zip(additional.keys(), values[:-1]))
@@ -23,14 +25,15 @@ class NeuronCell(CellModel):
                 )
             )
 
-        pos, morpho, rot = (
+        ids, pos, morpho, rot = (
+            iter(ids),
             iter(pos),
             iter(morpho),
             iter(rot),
         )
         additer = dictzip()
         return [
-            self._create(i, next(pos), next(morpho), next(rot), next(additer))
+            self._create(next(ids), next(pos), next(morpho), next(rot), next(additer))
             for i in range(count)
         ]
 
@@ -40,8 +43,7 @@ class NeuronCell(CellModel):
                 f"Cell {id} of {self.name} has no morphology, can't use {self.__class__.__name__} to construct it."
             )
         instance = self.create(id, pos, morpho, rot, additional)
-        instance._bsb_ref_id = id
-        instance._bsb_ref_pos = pos
+        instance.id = id
         return instance
 
 
@@ -52,7 +54,6 @@ class ArborizeModelTypeHandler(object_):
 
     def __call__(self, value):
         if isinstance(value, dict):
-            print("Using dict based model definition")
             model = define_model(value)
             model._cfg_inv = value
             return model

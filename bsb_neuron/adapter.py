@@ -8,7 +8,7 @@ import numpy as np
 from bsb.exceptions import AdapterError, DatasetNotFoundError
 from bsb.reporting import report
 from bsb.services import MPI
-from bsb.simulation.adapter import AdapterProgress, SimulatorAdapter, SimulationData
+from bsb.simulation.adapter import AdapterProgress, SimulationData, SimulatorAdapter
 from bsb.simulation.results import SimulationResult
 from bsb.storage import Chunk
 from neo import AnalogSignal
@@ -164,9 +164,9 @@ class NeuronAdapter(SimulatorAdapter):
         )
         self.next_gid += max_trans
         simdata.alloc = (first, self.next_gid)
-        simdata.transmap = self._map_transmitters(simulation, simdata)
+        simdata.transmap = self._map_transceivers(simulation, simdata)
 
-    def _map_transmitters(self, simulation, simdata):
+    def _map_transceivers(self, simulation, simdata):
         blocks = []
         offset = 0
         transmap = {}
@@ -176,32 +176,54 @@ class NeuronAdapter(SimulatorAdapter):
             pre, _ = cs.load_connections().as_globals().all()
             all_cm_transmitters = np.unique(pre[:, :2], axis=0)
             # Now look up which transmitters are on our chunks
-            pre_c, _ = cs.load_connections().from_(simdata.chunks).as_globals().all()
-            our_cm_transmitters = np.unique(pre_c[:, :2], axis=0)
+            pre_t, _ = cs.load_connections().from_(simdata.chunks).as_globals().all()
+            our_cm_transmitters = np.unique(pre_t[:, :2], axis=0)
             # Look up the local ids of those transmitters
             pre_lc, _ = cs.load_connections().from_(simdata.chunks).all()
             local_cm_transmitters = np.unique(pre_lc[:, :2], axis=0)
 
-            # Find the common indexes between the all the transmitters, and the
+            # Find the common indexes between all the transmitters, and the
             # transmitters on our chunk.
             dtype = ", ".join([str(all_cm_transmitters.dtype)] * 2)
-            _, idx, _ = np.intersect1d(
+            _, _, idx_tm = np.intersect1d(
                 our_cm_transmitters.view(dtype),
                 all_cm_transmitters.view(dtype),
                 assume_unique=True,
                 return_indices=True,
             )
-            # Store a map of the local chunk transmitters to their GIDs
-            transmap[cm] = dict(
-                zip(map(tuple, local_cm_transmitters), map(int, idx + offset))
+
+            # Look up which transmitters have receivers on our chunks
+            pre_gc, _ = cs.load_connections().incoming().to(simdata.chunks).all()
+            local_cm_receivers = np.unique(pre_gc[:, :2], axis=0)
+            _, _, idx_rcv = np.intersect1d(
+                local_cm_receivers.view(dtype),
+                all_cm_transmitters.view(dtype),
+                assume_unique=True,
+                return_indices=True,
             )
+
+            # Store a map of the local chunk transmitters to their GIDs
+            transmap[cm] = {
+                "transmitters": dict(
+                    zip(map(tuple, local_cm_transmitters), map(int, idx_tm + offset))
+                ),
+                "receivers": dict(
+                    zip(map(tuple, local_cm_receivers), map(int, idx_rcv + offset))
+                ),
+            }
             # Offset by the total amount of transmitter GIDs used by this ConnSet.
             offset += len(all_cm_transmitters)
         return transmap
 
     def _create_population(self, simdata, cell_model, ps, offset):
         data = []
-        for var in ("positions", "morphologies", "rotations", "additional"):
+        for var in (
+            "ids",
+            "positions",
+            "morphologies",
+            "rotations",
+            "additional",
+        ):
             try:
                 data.append(getattr(ps, f"load_{var}")())
             except DatasetNotFoundError:
