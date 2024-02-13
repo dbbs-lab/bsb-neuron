@@ -1,9 +1,12 @@
 import importlib
+import itertools
+import traceback
+import unittest
 from copy import copy
 
-import unittest
-
 from arborize import define_model
+from bsb.core import Scaffold
+from bsb.services import MPI
 from bsb.simulation import get_simulation_adapter
 from bsb_test import (
     ConfigFixture,
@@ -12,7 +15,6 @@ from bsb_test import (
     RandomStorageFixture,
 )
 
-from bsb.core import Scaffold
 from bsb_neuron.cell import ArborizedModel
 from bsb_neuron.connection import TransceiverModel
 
@@ -77,7 +79,8 @@ class TestNeuronMultichunk(
                     "cable": {"Ra": 10, "cm": 1},
                     "mechanisms": {"pas": {}, "hh": {}},
                 }
-            }
+            },
+            "synapse_types": {"ExpSyn": {}},
         }
         self.network.simulations.add(
             "test",
@@ -102,4 +105,41 @@ class TestNeuronMultichunk(
         Tests runnability of the NEURON adapter with 4 chunks filled with 100 single
         compartment HH cells and ExpSyn synapses connected all to all
         """
-        self.network.run_simulation("test")
+        sim = self.network.simulations.test
+        adapter = get_simulation_adapter(sim.simulator)
+        simdata = adapter.prepare(sim)
+        transmitting_cells = sorted(
+            itertools.chain.from_iterable(
+                MPI.allgather(
+                    [
+                        (model.name, cell.id, transmitter.gid)
+                        for model, pop in simdata.populations.items()
+                        for cell in pop
+                        if (
+                            transmitter := getattr(
+                                cell.sections[0], "_transmitter", None
+                            )
+                        )
+                    ]
+                )
+            )
+        )
+        receiving_cells = sorted(
+            itertools.chain.from_iterable(
+                MPI.allgather(
+                    [
+                        (model.name, cell.id, synapse.gid)
+                        for model, pop in simdata.populations.items()
+                        for cell in pop
+                        for synapse in getattr(cell.sections[0], "synapses", [])
+                    ]
+                )
+            )
+        )
+        self.assertEqual(
+            [("A", 0, 0), ("A", 1, 1), ("A", 3, 2), ("A", 5, 3)], transmitting_cells
+        )
+        self.assertEqual(
+            [("B", 0, 0), ("B", 0, 1), ("B", 2, 3), ("B", 3, 1), ("B", 8, 2)],
+            receiving_cells,
+        )
