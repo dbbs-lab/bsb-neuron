@@ -94,7 +94,9 @@ class TestNeuronMultichunk(
                 C=ArborizedModel(model=hh_soma),
             ),
             connection_models=dict(
-                A_to_B=TransceiverModel(synapses=[dict(synapse="ExpSyn")])
+                A_to_B=TransceiverModel(synapses=[dict(synapse="ExpSyn")]),
+                B_to_C=TransceiverModel(synapses=[dict(synapse="ExpSyn")]),
+                C_to_A=TransceiverModel(synapses=[dict(synapse="ExpSyn")]),
             ),
             devices=dict(),
         )
@@ -137,9 +139,36 @@ class TestNeuronMultichunk(
             )
         )
         self.assertEqual(
-            [("A", 0, 0), ("A", 1, 1), ("A", 3, 2), ("A", 5, 3)], transmitting_cells
+            [
+                # A to B
+                ("A", 0, 0),
+                ("A", 1, 1),
+                ("A", 3, 2),
+                ("A", 5, 3),
+                # B to C
+                ("B", 5, 4),
+                # C to A
+                ("C", 1, 5),
+                ("C", 5, 6),
+            ],
+            transmitting_cells,
         )
         self.assertEqual(
-            [("B", 0, 0), ("B", 0, 1), ("B", 2, 3), ("B", 3, 1), ("B", 8, 2)],
+            [
+                # C to A
+                ("A", 1, 6),
+                ("A", 5, 5),
+                ("A", 11, 6),
+                # A to B
+                ("B", 0, 0),
+                ("B", 0, 1),
+                ("B", 2, 3),
+                ("B", 3, 1),
+                ("B", 8, 2),
+                # B to C
+                ("C", 9, 4),
+                ("C", 10, 4),
+                ("C", 11, 4),
+            ],
             receiving_cells,
         )
