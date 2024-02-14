@@ -2,29 +2,28 @@ import contextlib
 import itertools
 import os
 import time
-import numpy as np
 import typing
 
-from neo import AnalogSignal
-
+import numpy as np
 from bsb.exceptions import AdapterError, DatasetNotFoundError
 from bsb.reporting import report
 from bsb.services import MPI
-from bsb.simulation.adapter import SimulatorAdapter, SimulationData
+from bsb.simulation.adapter import AdapterProgress, SimulationData, SimulatorAdapter
 from bsb.simulation.results import SimulationResult
 from bsb.storage import Chunk
+from neo import AnalogSignal
 
 if typing.TYPE_CHECKING:
     from bsb.simulation.simulation import Simulation
+
+    from .cell import NeuronCell
 
 
 class NeuronSimulationData(SimulationData):
     def __init__(self, simulation: "Simulation", result=None):
         super().__init__(simulation, result=result)
-        self.cells = dict()
         self.cid_offsets = dict()
         self.connections = dict()
-        self.first_gid: int = None
 
 
 class NeuronResult(SimulationResult):
@@ -103,28 +102,30 @@ class NeuronAdapter(SimulatorAdapter):
                 simdata.chunk_node_map[chunk] = node
         simdata.chunks = simdata.node_chunk_alloc[MPI.get_rank()]
 
-    def run(self, simulation: "Simulation"):
-        if simulation not in self.simdata:
-            raise AdapterError("Simulation was not prepared")
+    def run(self, *simulations: "Simulation"):
+        unprepared = [sim for sim in simulations if sim not in self.simdata]
+        if unprepared:
+            raise AdapterError(f"Unprepared for simulations: {', '.join(unprepared)}")
         try:
             report("Simulating...", level=2)
             pc = self.engine.ParallelContext()
             pc.set_maxstep(10)
             self.engine.finitialize(self.initial)
-            simulation.start_progress(simulation.duration)
-            for oi, i in simulation.step_progress(simulation.duration, 1):
-                t = time.time()
+            duration = max(sim.duration for sim in simulations)
+            progress = AdapterProgress(duration)
+            for oi, i in progress.steps(step=1):
                 pc.psolve(i)
-                simulation.progress(i)
-                if os.path.exists("interrupt_neuron"):
-                    report("Iterrupt requested. Stopping simulation.", level=1)
-                    break
+                tick = progress.tick(i)
+                for listener in self._progress_listeners:
+                    listener(simulations, tick)
+            progress.complete()
             report("Finished simulation.", level=2)
         finally:
-            result = self.simdata[simulation].result
-            del self.simdata[simulation]
+            results = [self.simdata[sim].result for sim in simulations]
+            for sim in simulations:
+                del self.simdata[sim]
 
-        return result
+        return results
 
     def create_neurons(self, simulation):
         simdata = self.simdata[simulation]
@@ -163,24 +164,66 @@ class NeuronAdapter(SimulatorAdapter):
         )
         self.next_gid += max_trans
         simdata.alloc = (first, self.next_gid)
-        simdata.transmap = self._map_transmitters(simulation, simdata)
+        simdata.transmap = self._map_transceivers(simulation, simdata)
 
-    def _map_transmitters(self, simulation, simdata):
+    def _map_transceivers(self, simulation, simdata):
         blocks = []
+        offset = 0
+        transmap = {}
+
         for cm, cs in simulation.get_connectivity_sets().items():
+            # For each connectivity set, determine how many unique transmitters they will place.
             pre, _ = cs.load_connections().as_globals().all()
-            pre[:, 0] += simdata.cid_offsets[cs.pre_type]
-            blocks.append(pre[:, :2])
-        if blocks:
-            blocks = np.unique(np.concatenate(blocks), axis=0)
-        return {
-            tuple(loc): gid + simdata.alloc[0]
-            for gid, loc in zip(itertools.count(), blocks)
-        }
+            all_cm_transmitters = np.unique(pre[:, :2], axis=0)
+            # Now look up which transmitters are on our chunks
+            pre_t, _ = cs.load_connections().from_(simdata.chunks).as_globals().all()
+            our_cm_transmitters = np.unique(pre_t[:, :2], axis=0)
+            # Look up the local ids of those transmitters
+            pre_lc, _ = cs.load_connections().from_(simdata.chunks).all()
+            local_cm_transmitters = np.unique(pre_lc[:, :2], axis=0)
+
+            # Find the common indexes between all the transmitters, and the
+            # transmitters on our chunk.
+            dtype = ", ".join([str(all_cm_transmitters.dtype)] * 2)
+            _, _, idx_tm = np.intersect1d(
+                our_cm_transmitters.view(dtype),
+                all_cm_transmitters.view(dtype),
+                assume_unique=True,
+                return_indices=True,
+            )
+
+            # Look up which transmitters have receivers on our chunks
+            pre_gc, _ = cs.load_connections().incoming().to(simdata.chunks).all()
+            local_cm_receivers = np.unique(pre_gc[:, :2], axis=0)
+            _, _, idx_rcv = np.intersect1d(
+                local_cm_receivers.view(dtype),
+                all_cm_transmitters.view(dtype),
+                assume_unique=True,
+                return_indices=True,
+            )
+
+            # Store a map of the local chunk transmitters to their GIDs
+            transmap[cm] = {
+                "transmitters": dict(
+                    zip(map(tuple, local_cm_transmitters), map(int, idx_tm + offset))
+                ),
+                "receivers": dict(
+                    zip(map(tuple, local_cm_receivers), map(int, idx_rcv + offset))
+                ),
+            }
+            # Offset by the total amount of transmitter GIDs used by this ConnSet.
+            offset += len(all_cm_transmitters)
+        return transmap
 
     def _create_population(self, simdata, cell_model, ps, offset):
         data = []
-        for var in ("positions", "morphologies", "rotations", "additional"):
+        for var in (
+            "ids",
+            "positions",
+            "morphologies",
+            "rotations",
+            "additional",
+        ):
             try:
                 data.append(getattr(ps, f"load_{var}")())
             except DatasetNotFoundError:
@@ -188,20 +231,23 @@ class NeuronAdapter(SimulatorAdapter):
 
         with fill_parameter_data(cell_model.parameters, data):
             instances = cell_model.create_instances(len(ps), *data)
-            simdata.populations[cell_model] = NeuronPopulation(instances)
-            for id, instance in zip(ps.load_ids(), instances):
-                cid = offset + id
-                instance.id = cid
-                instance.cell_model = cell_model
-                simdata.cells[cid] = instance
+            simdata.populations[cell_model] = NeuronPopulation(cell_model, instances)
 
 
 class NeuronPopulation(list):
+    def __init__(self, model: "NeuronCell", instances: list):
+        self._model = model
+        super().__init__(instances)
+        for instance in instances:
+            instance.cell_model = model
+
     def __getitem__(self, item):
         # Boolean masking, kind of
         if getattr(item, "dtype", None) == bool or _all_bools(item):
             return NeuronPopulation([p for p, b in zip(self, item) if b])
         elif getattr(item, "dtype", None) == int or _all_ints(item):
+            if getattr(item, "ndim", None) == 0:
+                return super().__getitem__(item)
             return NeuronPopulation([self[i] for i in item])
         else:
             return super().__getitem__(item)

@@ -1,6 +1,7 @@
 from bsb import config
 from bsb.config import types
 from bsb.simulation.simulation import Simulation
+
 from .cell import NeuronCell
 from .connection import NeuronConnection
 from .device import NeuronDevice

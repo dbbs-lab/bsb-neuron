@@ -1,6 +1,7 @@
 from bsb import config
 from bsb.config import types
 from bsb.simulation.targetting import LocationTargetting
+
 from ..device import NeuronDevice
 
 

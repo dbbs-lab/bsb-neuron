@@ -1,9 +1,10 @@
 import itertools
-
-from bsb import config
-from bsb.config import types
-from bsb.simulation.cell import CellModel
 from typing import TYPE_CHECKING
+
+from arborize import ModelDefinition, define_model
+from bsb import config
+from bsb.config.types import object_
+from bsb.simulation.cell import CellModel
 
 if TYPE_CHECKING:
     from bsb.morphologies import MorphologySet
@@ -13,7 +14,9 @@ if TYPE_CHECKING:
     attr_name="model_strategy", required=False, default="arborize", auto_classmap=True
 )
 class NeuronCell(CellModel):
-    def create_instances(self, count, pos, morpho: "MorphologySet", rot, additional):
+    def create_instances(
+        self, count, ids, pos, morpho: "MorphologySet", rot, additional
+    ):
         def dictzip():
             yield from (
                 dict(zip(additional.keys(), values[:-1]))
@@ -22,14 +25,15 @@ class NeuronCell(CellModel):
                 )
             )
 
-        pos, morpho, rot = (
+        ids, pos, morpho, rot = (
+            iter(ids),
             iter(pos),
             iter(morpho),
             iter(rot),
         )
         additer = dictzip()
         return [
-            self._create(i, next(pos), next(morpho), next(rot), next(additer))
+            self._create(next(ids), next(pos), next(morpho), next(rot), next(additer))
             for i in range(count)
         ]
 
@@ -39,14 +43,34 @@ class NeuronCell(CellModel):
                 f"Cell {id} of {self.name} has no morphology, can't use {self.__class__.__name__} to construct it."
             )
         instance = self.create(id, pos, morpho, rot, additional)
-        instance._bsb_ref_id = id
-        instance._bsb_ref_pos = pos
+        instance.id = id
         return instance
+
+
+class ArborizeModelTypeHandler(object_):
+    @property
+    def __name__(self):
+        return "arborized model definition"
+
+    def __call__(self, value):
+        if isinstance(value, dict):
+            model = define_model(value)
+            model._cfg_inv = value
+            return model
+        else:
+            return super().__call__(value)
+
+    def __inv__(self, value):
+        inv_value = super().__inv__(value)
+        if isinstance(inv_value, ModelDefinition):
+            # fixme: not good, should at least be converted back to a compatible dict
+            #  definition
+            return str(inv_value)
 
 
 @config.node
 class ArborizedModel(NeuronCell, classmap_entry="arborize"):
-    model = config.attr(type=types.object_(), required=True)
+    model = config.attr(type=ArborizeModelTypeHandler(), required=True)
     _schematics = {}
 
     def create(self, id, pos, morpho, rot, additional):
