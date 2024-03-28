@@ -10,7 +10,7 @@ license = { file = "LICENSE" }
 classifiers = ["License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)"]
 dynamic = ["version", "description"]
 dependencies = [
-    "bsb-core>=4.0.0b9,<=4.0.0b9999",
+    "bsb-core==4.0.0rc2",
     "nrn-patch>=4.0.0b3,<=4.0.0b9999",
     "arborize[neuron]>=4.0.0b6,<=4.0.0b9999"
 ]
@@ -23,7 +23,7 @@ neuron = "bsb_neuron"
 
 [project.optional-dependencies]
 parallel = ["bsb-core[parallel]"]
-test = ["bsb-test>=0.0.0b8,<=0.0.0b9999", "coverage~=7.0", "bsb-hdf5>=1.0.0b1"]
+test = ["bsb-test==4.0.0rc2", "coverage~=7.0", "bsb-hdf5==4.0.0rc2"]
 dev = [
     "pre-commit~=3.5",
     "black~=24.1.1",
@@ -38,7 +38,7 @@ line-length = 90
 profile = "black"
 
 [tool.bumpversion]
-current_version = "0.0.0-b4"
+current_version = "4.0.0-rc2"
 parse = """(?x)
     (?P<major>0|[1-9]\\d*)\\.
     (?P<minor>0|[1-9]\\d*)\\.
