@@ -118,9 +118,7 @@ class TestNeuronMultichunk(
                         for model, pop in simdata.populations.items()
                         for cell in pop
                         if (
-                            transmitter := getattr(
-                                cell.sections[0], "_transmitter", None
-                            )
+                            transmitter := getattr(cell.sections[0], "_transmitter", None)
                         )
                     ]
                 )
