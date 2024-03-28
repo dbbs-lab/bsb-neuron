@@ -1,20 +1,23 @@
 import contextlib
 import itertools
-import os
-import time
 import typing
 
 import numpy as np
-from bsb.exceptions import AdapterError, DatasetNotFoundError
-from bsb.reporting import report
-from bsb.services import MPI
-from bsb.simulation.adapter import AdapterProgress, SimulationData, SimulatorAdapter
-from bsb.simulation.results import SimulationResult
-from bsb.storage import Chunk
+from bsb import (
+    MPI,
+    AdapterError,
+    AdapterProgress,
+    Chunk,
+    DatasetNotFoundError,
+    SimulationData,
+    SimulationResult,
+    SimulatorAdapter,
+    report,
+)
 from neo import AnalogSignal
 
 if typing.TYPE_CHECKING:
-    from bsb.simulation.simulation import Simulation
+    from bsb import Simulation
 
     from .cell import NeuronCell
 

@@ -1,6 +1,4 @@
-from bsb import config
-from bsb.reporting import warn
-from bsb.simulation.targetting import LocationTargetting
+from bsb import LocationTargetting, config, warn
 
 from ..device import NeuronDevice
 

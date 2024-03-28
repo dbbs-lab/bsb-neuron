@@ -1,14 +1,10 @@
 import typing
 
 import numpy as np
-from bsb import config
-from bsb.config import types
-from bsb.exceptions import AdapterError
-from bsb.simulation.connection import ConnectionModel
-from bsb.simulation.parameter import Parameter
+from bsb import AdapterError, ConnectionModel, Parameter, config, types
 
 if typing.TYPE_CHECKING:
-    from bsb.storage import ConnectivitySet
+    from bsb import ConnectivitySet
 
     from .adapter import NeuronSimulationData
     from .simulation import NeuronSimulation
@@ -57,9 +53,7 @@ class TransceiverModel(NeuronConnection, classmap_entry="transceiver"):
         self.create_transmitters(simdata, cs)
         self.create_receivers(simdata, cs)
 
-    def create_transmitters(
-        self, simdata: "NeuronSimulationData", cs: "ConnectivitySet"
-    ):
+    def create_transmitters(self, simdata: "NeuronSimulationData", cs: "ConnectivitySet"):
         for cm, pop in simdata.populations.items():
             if cm.cell_type == cs.pre_type:
                 break

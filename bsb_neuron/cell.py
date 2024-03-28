@@ -2,9 +2,7 @@ import itertools
 from typing import TYPE_CHECKING
 
 from arborize import ModelDefinition, define_model
-from bsb import config
-from bsb.config.types import object_
-from bsb.simulation.cell import CellModel
+from bsb import CellModel, config, types
 
 if TYPE_CHECKING:
     from bsb.morphologies import MorphologySet
@@ -14,9 +12,7 @@ if TYPE_CHECKING:
     attr_name="model_strategy", required=False, default="arborize", auto_classmap=True
 )
 class NeuronCell(CellModel):
-    def create_instances(
-        self, count, ids, pos, morpho: "MorphologySet", rot, additional
-    ):
+    def create_instances(self, count, ids, pos, morpho: "MorphologySet", rot, additional):
         def dictzip():
             yield from (
                 dict(zip(additional.keys(), values[:-1]))
@@ -47,7 +43,7 @@ class NeuronCell(CellModel):
         return instance
 
 
-class ArborizeModelTypeHandler(object_):
+class ArborizeModelTypeHandler(types.object_):
     @property
     def __name__(self):
         return "arborized model definition"

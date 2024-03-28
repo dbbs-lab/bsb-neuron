@@ -1,6 +1,4 @@
-from bsb import config
-from bsb.simulation.device import DeviceModel
-from bsb.simulation.targetting import Targetting
+from bsb import DeviceModel, Targetting, config
 
 
 @config.dynamic(attr_name="device", auto_classmap=True)
