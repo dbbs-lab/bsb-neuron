@@ -10,9 +10,9 @@ license = { file = "LICENSE" }
 classifiers = ["License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)"]
 dynamic = ["version", "description"]
 dependencies = [
-    "bsb-core==4.0.0rc2",
-    "nrn-patch>=4.0.0b3,<=4.0.0b9999",
-    "arborize[neuron]>=4.0.0b6,<=4.0.0b9999"
+    "bsb-core~=4.0",
+    "nrn-patch~=4.0",
+    "arborize[neuron]~=4.0"
 ]
 
 [tool.flit.module]
@@ -23,10 +23,10 @@ neuron = "bsb_neuron"
 
 [project.optional-dependencies]
 parallel = ["bsb-core[parallel]"]
-test = ["bsb-test==4.0.0rc2", "coverage~=7.0", "bsb-hdf5==4.0.0rc2"]
+test = ["bsb-test~=4.0", "coverage~=7.0", "bsb-hdf5~=4.0"]
 dev = [
     "pre-commit~=3.5",
-    "black~=24.1.1",
+    "black~=24.0",
     "isort~=5.12",
     "bump-my-version~=0.18"
 ]
@@ -39,20 +39,8 @@ profile = "black"
 
 [tool.bumpversion]
 current_version = "4.0.0"
-parse = """(?x)
-    (?P<major>0|[1-9]\\d*)\\.
-    (?P<minor>0|[1-9]\\d*)\\.
-    (?P<patch>0|[1-9]\\d*)
-    (?:
-        -                             # dash seperator for pre-release section
-        (?P<pre_l>[a-zA-Z-]+)         # pre-release label
-        (?P<pre_n>0|[1-9]\\d*)        # pre-release version number
-    )?                                # pre-release section is optional
-"""
-serialize = [
-    "{major}.{minor}.{patch}-{pre_l}{pre_n}",
-    "{major}.{minor}.{patch}",
-]
+parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
+serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"
 replace = "{new_version}"
 regex = false
