@@ -58,10 +58,11 @@ class ArborizeModelTypeHandler(types.object_):
 
     def __inv__(self, value):
         inv_value = super().__inv__(value)
+
         if isinstance(inv_value, ModelDefinition):
-            # fixme: not good, should at least be converted back to a compatible dict
-            #  definition
+            inv_value = inv_value._to_dict()
             return str(inv_value)
+        return inv_value
 
 
 @config.node
