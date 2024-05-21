@@ -18,7 +18,7 @@ class VoltageClamp(NeuronDevice, classmap_entry="vclamp"):
 
     def implement(self, adapter, simulation, simdata):
         for target in self.targetting.get_targets(
-            adapter, simdata.populations, simdata.connections
+            adapter, simulation, simdata
         ):
             clamped = False
             for location in self.locations.get_locations(target):
