@@ -61,7 +61,7 @@ class ArborizeModelTypeHandler(types.object_):
 
         if isinstance(inv_value, ModelDefinition):
             inv_value = inv_value.to_dict()
-            return str(inv_value)
+            return inv_value
         return inv_value
 
 
