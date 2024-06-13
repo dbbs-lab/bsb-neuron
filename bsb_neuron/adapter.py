@@ -247,11 +247,11 @@ class NeuronPopulation(list):
     def __getitem__(self, item):
         # Boolean masking, kind of
         if getattr(item, "dtype", None) == bool or _all_bools(item):
-            return NeuronPopulation([p for p, b in zip(self, item) if b])
+            return NeuronPopulation(self._model, [p for p, b in zip(self, item) if b])
         elif getattr(item, "dtype", None) == int or _all_ints(item):
             if getattr(item, "ndim", None) == 0:
                 return super().__getitem__(item)
-            return NeuronPopulation([self[i] for i in item])
+            return NeuronPopulation(self._model, [self[i] for i in item])
         else:
             return super().__getitem__(item)
 
