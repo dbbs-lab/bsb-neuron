@@ -172,115 +172,58 @@ class NeuronAdapter(SimulatorAdapter):
     def _map_transceivers(self, simulation, simdata):
         offset = 0
         transmap = {}
-        trnsm_dict = {}
-        rcv_dict = {}
 
-        for cm, cs in simulation.get_connectivity_sets().items():
-            # For each connectivity set, determine how many unique transmitters they will place.
-            pre, _ = cs.load_connections().as_globals().all()
-            all_cm_transmitters = np.unique(pre[:, :2], axis=0)
-            # Now look up which transmitters are on our chunks
-            pre_t, _ = cs.load_connections().from_(simdata.chunks).as_globals().all()
-            our_cm_transmitters = np.unique(pre_t[:, :2], axis=0)
-            # Look up the local ids of those transmitters
-            pre_lc, _ = cs.load_connections().from_(simdata.chunks).all()
-            local_cm_transmitters = np.unique(pre_lc[:, :2], axis=0)
+        pre_types = set(cs.pre_type for cs in simulation.get_connectivity_sets().values())
+        for pre_type in pre_types:
+            data = []
+            for cm, cs in simulation.get_connectivity_sets().items():
+                if cs.pre_type != pre_type:
+                    continue
+                pre, _ = cs.load_connections().as_globals().all()
+                data.append(pre[:, :2])
 
-            # Find the common indexes between all the transmitters, and the
-            # transmitters on our chunk.
-            dtype = ", ".join([str(all_cm_transmitters.dtype)] * 2)
-            _, _, idx_tm = np.intersect1d(
-                our_cm_transmitters.view(dtype),
-                all_cm_transmitters.view(dtype),
-                assume_unique=True,
-                return_indices=True,
-            )
+            # Save all transmitters of the same pre_type across connectivity sets
+            all_cm_transmitters = np.unique(data, axis=0)
+            for cm, cs in simulation.get_connectivity_sets().items():
+                if cs.pre_type != pre_type:
+                    continue
+                # Now look up which transmitters are on our chunks
+                pre_t, _ = cs.load_connections().from_(simdata.chunks).as_globals().all()
+                our_cm_transmitters = np.unique(pre_t[:, :2], axis=0)
+                # Look up the local ids of those transmitters
+                pre_lc, _ = cs.load_connections().from_(simdata.chunks).all()
+                local_cm_transmitters = np.unique(pre_lc[:, :2], axis=0)
 
-            our_in_all = all_cm_transmitters[idx_tm]
-            gid = idx_tm + offset
-            if cs.pre_type.name in trnsm_dict.keys():
-                # Check if pre-syn cell already in previous cs
-                previous_our_in_all = np.array(list(trnsm_dict[cs.pre_type.name].keys()))
-                dtype = ", ".join([str(previous_our_in_all.dtype)] * 2)
-                _, idx_our, idx_previous = np.intersect1d(
-                    our_in_all.view(dtype),
-                    previous_our_in_all.view(dtype),
+                # Find the common indexes between all the transmitters, and the
+                # transmitters on our chunk.
+                dtype = ", ".join([str(all_cm_transmitters.dtype)] * 2)
+                _, _, idx_tm = np.intersect1d(
+                    our_cm_transmitters.view(dtype),
+                    all_cm_transmitters.view(dtype),
                     assume_unique=True,
                     return_indices=True,
                 )
-                if idx_previous.size > 0:
-                    for i, idx_previous_i in enumerate(idx_previous):
-                        # Use GID previously assigned
-                        gid[idx_our[i]] = trnsm_dict[cs.pre_type.name][
-                            tuple(previous_our_in_all[idx_previous_i])
-                        ]
 
-                # Add to the exisitng key cs.pre_type.name the new element without inserting intersections
-                trnsm_dict[cs.pre_type.name].update(
-                    dict(
-                        zip(
-                            map(tuple, np.delete(our_in_all, idx_our, axis=0)),
-                            map(int, np.delete(gid, idx_our)),
-                        )
-                    )
-                )
-            else:
-                # Add a new pre-syn cell key
-                trnsm_dict[cs.pre_type.name] = dict(
-                    zip(map(tuple, our_in_all), map(int, gid))
-                )
-
-            # Look up which transmitters have receivers on our chunks
-            pre_gc, _ = cs.load_connections().incoming().to(simdata.chunks).all()
-            local_cm_receivers = np.unique(pre_gc[:, :2], axis=0)
-            _, _, idx_rcv = np.intersect1d(
-                local_cm_receivers.view(dtype),
-                all_cm_transmitters.view(dtype),
-                assume_unique=True,
-                return_indices=True,
-            )
-
-            our_in_all = all_cm_transmitters[idx_rcv]
-            gid_rcv = idx_rcv + offset
-            if cs.pre_type.name in rcv_dict.keys():
-                # Check if pre-syn cell already in previous cs
-                previous_our_in_all = np.array(list(rcv_dict[cs.pre_type.name].keys()))
-                dtype = ", ".join([str(previous_our_in_all.dtype)] * 2)
-                _, idx_our, idx_previous = np.intersect1d(
-                    our_in_all.view(dtype),
-                    previous_our_in_all.view(dtype),
+                # Look up which transmitters have receivers on our chunks
+                pre_gc, _ = cs.load_connections().incoming().to(simdata.chunks).all()
+                local_cm_receivers = np.unique(pre_gc[:, :2], axis=0)
+                _, _, idx_rcv = np.intersect1d(
+                    local_cm_receivers.view(dtype),
+                    all_cm_transmitters.view(dtype),
                     assume_unique=True,
                     return_indices=True,
                 )
-                if idx_previous.size > 0:
-                    for i, idx_previous_i in enumerate(idx_previous):
-                        # Use GID previously assigned
-                        gid_rcv[idx_our[i]] = rcv_dict[cs.pre_type.name][
-                            tuple(previous_our_in_all[idx_previous_i])
-                        ]
 
-                # Add to the exisitng key cs.pre_type.name the new element without inserting intersections
-                rcv_dict[cs.pre_type.name].update(
-                    dict(
-                        zip(
-                            map(tuple, np.delete(our_in_all, idx_our, axis=0)),
-                            map(int, np.delete(gid_rcv, idx_our)),
-                        )
-                    )
-                )
-            else:
-                # Add a new pre-syn cell key
-                rcv_dict[cs.pre_type.name] = dict(
-                    zip(map(tuple, our_in_all), map(int, gid_rcv))
-                )
+                # Store a map of the local chunk transmitters to their GIDs
+                transmap[cm] = {
+                    "transmitters": dict(
+                        zip(map(tuple, local_cm_transmitters), map(int, idx_tm + offset))
+                    ),
+                    "receivers": dict(
+                        zip(map(tuple, local_cm_receivers), map(int, idx_rcv + offset))
+                    ),
+                }
 
-            # Store a map of the local chunk transmitters to their GIDs
-            transmap[cm] = {
-                "transmitters": dict(
-                    zip(map(tuple, local_cm_transmitters), map(int, gid))
-                ),
-                "receivers": dict(zip(map(tuple, local_cm_receivers), map(int, gid_rcv))),
-            }
             # Offset by the total amount of transmitter GIDs used by this ConnSet.
             offset += len(all_cm_transmitters)
         return transmap
