@@ -182,6 +182,7 @@ class NeuronAdapter(SimulatorAdapter):
                 pre, _ = cs.load_connections().as_globals().all()
                 data.append(pre[:, :2])
 
+            data = self.better_concat(data)
             # Save all transmitters of the same pre_type across connectivity sets
             all_cm_transmitters = np.unique(data, axis=0)
             for cm, cs in simulation.get_connectivity_sets().items():
@@ -227,6 +228,17 @@ class NeuronAdapter(SimulatorAdapter):
             # Offset by the total amount of transmitter GIDs used by this ConnSet.
             offset += len(all_cm_transmitters)
         return transmap
+
+    def better_concat(self, items):
+        if not items:
+            raise RuntimeError("Can not concat 0 items")
+        l = sum(len(x) for x in items)
+        r = np.empty((l, items[0].shape[1]), dtype=items[0].dtype)
+        ptr = 0
+        for x in items:
+            r[ptr : ptr + len(x)] = x
+            ptr += len(x)
+        return r
 
     def _create_population(self, simdata, cell_model, ps, offset):
         data = []
