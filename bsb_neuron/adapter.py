@@ -174,7 +174,7 @@ class NeuronAdapter(SimulatorAdapter):
         transmap = {}
 
         pre_types = set(cs.pre_type for cs in simulation.get_connectivity_sets().values())
-        for pre_type in pre_types:
+        for pre_type in sorted(pre_types, key=lambda pre_type: pre_type.name):
             data = []
             for cm, cs in simulation.get_connectivity_sets().items():
                 if cs.pre_type != pre_type:
@@ -188,6 +188,7 @@ class NeuronAdapter(SimulatorAdapter):
             for cm, cs in simulation.get_connectivity_sets().items():
                 if cs.pre_type != pre_type:
                     continue
+
                 # Now look up which transmitters are on our chunks
                 pre_t, _ = cs.load_connections().from_(simdata.chunks).as_globals().all()
                 our_cm_transmitters = np.unique(pre_t[:, :2], axis=0)
