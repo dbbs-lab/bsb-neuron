@@ -140,6 +140,8 @@ class NeuronAdapter(SimulatorAdapter):
                 if (len(ps)) != 0:
                     self._create_population(simdata, cell_model, ps, offset)
                     offset += len(ps)
+                else:
+                    simdata.populations[cell_model] = NeuronPopulation(cell_model, [])
 
     def create_connections(self, simulation):
         simdata = self.simdata[simulation]
