@@ -172,6 +172,7 @@ class TestNeuronMultichunk(
             receiving_cells,
         )
 
+
 @unittest.skipIf(not neuron_installed(), "NEURON is not installed")
 class TestNeuronSmallChunk(
     RandomStorageFixture,
@@ -287,6 +288,7 @@ class TestNeuronSmallChunk(
             receiving_cells,
         )
 
+
 @unittest.skipIf(not neuron_installed(), "NEURON is not installed")
 class TestNeuronMultiBranch(
     RandomStorageFixture,
@@ -349,7 +351,9 @@ class TestNeuronMultiBranch(
                         for cell in pop
                         for i_sec, sec_i in enumerate(cell.sections)
                         if (
-                            transmitter := getattr(cell.sections[i_sec], "_transmitter", None)
+                            transmitter := getattr(
+                                cell.sections[i_sec], "_transmitter", None
+                            )
                         )
                     ]
                 )
@@ -375,7 +379,7 @@ class TestNeuronMultiBranch(
                 ("A", 0, 1, 1),
                 ("A", 3, 1, 2),
                 ("A", 5, 0, 3),
-                # B 
+                # B
                 ("B", 5, 0, 4),
                 # C
                 ("C", 1, 0, 5),
@@ -402,7 +406,8 @@ class TestNeuronMultiBranch(
             ],
             receiving_cells,
         )
-        
+
+
 @unittest.skipIf(not neuron_installed(), "NEURON is not installed")
 class TestNeuronMultiBranchLoop(
     RandomStorageFixture,
@@ -467,7 +472,9 @@ class TestNeuronMultiBranchLoop(
                         for cell in pop
                         for i_sec, sec_i in enumerate(cell.sections)
                         if (
-                            transmitter := getattr(cell.sections[i_sec], "_transmitter", None)
+                            transmitter := getattr(
+                                cell.sections[i_sec], "_transmitter", None
+                            )
                         )
                     ]
                 )
@@ -495,9 +502,9 @@ class TestNeuronMultiBranchLoop(
                 ("A", 3, 0, 3),
                 ("A", 3, 1, 4),
                 ("A", 5, 0, 5),
-                # B 
+                # B
                 ("B", 5, 0, 6),
-                # C 
+                # C
                 ("C", 1, 0, 7),
                 ("C", 5, 0, 8),
             ],
@@ -505,23 +512,22 @@ class TestNeuronMultiBranchLoop(
         )
         self.assertEqual(
             [
-                
-                ("A", 0, 1, 0), # A to A
-                ("A", 1, 0, 8), # C to A
-                ("A", 3, 0, 2), # A to A
-                ("A", 5, 0, 7), # C to A
-                ("A", 7, 1, 0), # A to A
-                ("A", 7, 1, 4), # A to A
-                ("A", 11, 0, 8), # C to A
+                ("A", 0, 1, 0),  # A to A
+                ("A", 1, 0, 8),  # C to A
+                ("A", 3, 0, 2),  # A to A
+                ("A", 5, 0, 7),  # C to A
+                ("A", 7, 1, 0),  # A to A
+                ("A", 7, 1, 4),  # A to A
+                ("A", 11, 0, 8),  # C to A
                 ("B", 1, 0, 8),  # C to B
                 # A to B
-                ("B", 3, 0, 0), 
+                ("B", 3, 0, 0),
                 ("B", 3, 0, 1),
                 ("B", 5, 0, 3),
-                ("B", 5, 0, 7), # C to B
-                ("B", 8, 0, 3), # A to B
-                ("B", 10, 0, 5), # A to B
-                ("B", 11, 0, 8), # C to B
+                ("B", 5, 0, 7),  # C to B
+                ("B", 8, 0, 3),  # A to B
+                ("B", 10, 0, 5),  # A to B
+                ("B", 11, 0, 8),  # C to B
                 # B to C
                 ("C", 9, 0, 6),
                 ("C", 10, 0, 6),
