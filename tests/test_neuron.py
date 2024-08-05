@@ -72,6 +72,7 @@ class TestNeuronMultichunk(
 ):
     def setUp(self):
         super().setUp()
+        p.parallel.gid_clear()
         for ct in self.network.cell_types.values():
             ct.spatial.morphologies = ["2comp"]
         hh_soma = {
