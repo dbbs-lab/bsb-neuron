@@ -4,7 +4,6 @@ import traceback
 import unittest
 from copy import copy
 
-from patch import p
 from arborize import define_model
 from bsb.core import Scaffold
 from bsb.services import MPI
@@ -15,6 +14,7 @@ from bsb_test import (
     NetworkFixture,
     RandomStorageFixture,
 )
+from patch import p
 
 from bsb_neuron.cell import ArborizedModel
 from bsb_neuron.connection import TransceiverModel
