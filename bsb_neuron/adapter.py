@@ -10,6 +10,7 @@ from bsb import (
     Chunk,
     DatasetNotFoundError,
     SimulationData,
+    SimulationError,
     SimulationResult,
     SimulatorAdapter,
     report,
@@ -104,6 +105,10 @@ class NeuronAdapter(SimulatorAdapter):
             for chunk in chunks:
                 simdata.chunk_node_map[chunk] = node
         simdata.chunks = simdata.node_chunk_alloc[MPI.get_rank()]
+        simdata.placement = {
+            model: model.get_placement_set(chunks=simdata.chunks)
+            for model in simulation.cell_models.values()
+        }
 
     def run(self, *simulations: "Simulation"):
         unprepared = [sim for sim in simulations if sim not in self.simdata]
@@ -247,7 +252,10 @@ class NeuronPopulation(list):
     def __getitem__(self, item):
         # Boolean masking, kind of
         if getattr(item, "dtype", None) == bool or _all_bools(item):
-            return NeuronPopulation(self._model, [p for p, b in zip(self, item) if b])
+            if len(self) == len(item):
+                return NeuronPopulation(self._model, [p for p, b in zip(self, item) if b])
+            else:
+                raise SimulationError
         elif getattr(item, "dtype", None) == int or _all_ints(item):
             if getattr(item, "ndim", None) == 0:
                 return super().__getitem__(item)
