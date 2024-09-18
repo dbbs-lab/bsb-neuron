@@ -22,10 +22,16 @@ class VoltageClamp(NeuronDevice, classmap_entry="vclamp"):
             for location in self.locations.get_locations(target):
                 if clamped:
                     warnings.warn(f"Multiple voltage clamps placed on {target}")
-                self._add_clamp(simdata.results, location)
+                self._add_clamp(
+                    simdata.results,
+                    location,
+                    name=self.name,
+                    cell_type=target.cell_model.name,
+                    cell_id=target.id,
+                )
                 clamped = True
 
-    def _add_clamp(self, results, location):
+    def _add_clamp(self, results, location, **annotations):
         sx = location.arc(0.5)
         clamp = location.section.vclamp(
             voltage=self.voltage,
@@ -36,4 +42,4 @@ class VoltageClamp(NeuronDevice, classmap_entry="vclamp"):
                 if (v := getattr(self, k)) is not None
             },
         )
-        results.record(clamp)
+        results.record(clamp, **annotations)
