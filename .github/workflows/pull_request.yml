@@ -1,0 +1,16 @@
+name: Validate Pull Request Name
+
+on:
+  pull_request:
+    types: [edited, opened, reopened]
+
+jobs:
+  validate-pr-title:
+    # Trigger only for local PR when PR is edited (title, description, etc.)
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR Conventional Commit Validation
+        uses:  ytanikin/PRConventionalCommits@1.2.0
+        with:
+          task_types: '["feat","fix","docs","test","ci","refactor","perf","revert"]'
