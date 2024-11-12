@@ -23,12 +23,21 @@ neuron = "bsb_neuron"
 
 [project.optional-dependencies]
 parallel = ["bsb-core[parallel]"]
-test = ["bsb-test~=4.0", "coverage~=7.0", "bsb-hdf5~=4.0"]
+test = [
+    "bsb-core[parallel]",
+    "bsb-test~=4.0",
+    "coverage~=7.0",
+    "bsb-hdf5~=4.0"
+]
 dev = [
+    "bsb-neuron[test]",
+    "build~=1.0",
+    "twine~=4.0",
     "pre-commit~=3.5",
-    "black~=24.0",
+    "black~=24.1.1",
     "isort~=5.12",
-    "bump-my-version~=0.18"
+    "snakeviz~=2.1",
+    "bump-my-version~=0.24"
 ]
 
 [tool.black]
@@ -38,7 +47,7 @@ line-length = 90
 profile = "black"
 
 [tool.bumpversion]
-current_version = "4.0.2"
+current_version = "4.1.0"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"
