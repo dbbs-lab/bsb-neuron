@@ -30,4 +30,4 @@ class SynapseRecorder(NeuronDevice, classmap_entry="synapse_recorder"):
 
 
 def _record_synaptic_current(result, synapse, **annotations):
-    result.record(synapse._pp._ref_i, **annotations)
+    result.record(synapse._pp._ref_i, **annotations, unit="nA")
