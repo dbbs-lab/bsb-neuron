@@ -19,12 +19,18 @@ class CurrentClamp(NeuronDevice, classmap_entry="current_clamp"):
                 for location in self.locations.get_locations(target):
                     if clamped:
                         warn(f"Multiple current clamps placed on {target}")
-                    self._add_clamp(simdata, location)
+                    self._add_clamp(
+                        simdata,
+                        location,
+                        name=self.name,
+                        cell_type=target.cell_model.name,
+                        cell_id=target.id,
+                    )
                     clamped = True
 
-    def _add_clamp(self, simdata, location):
+    def _add_clamp(self, simdata, location, **annotations):
         sx = location.arc(0.5)
         clamp = location.section.iclamp(
             x=sx, delay=self.before, duration=self.duration, amplitude=self.amplitude
         )
-        simdata.result.record(clamp._ref_i)
+        simdata.result.record(clamp._ref_i, **annotations)

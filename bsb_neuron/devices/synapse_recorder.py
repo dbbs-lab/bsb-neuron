@@ -19,8 +19,15 @@ class SynapseRecorder(NeuronDevice, classmap_entry="synapse_recorder"):
                             not self.synapse_types
                             or synapse.synapse_name in self.synapse_types
                         ):
-                            _record_synaptic_current(simdata.result, synapse)
+                            _record_synaptic_current(
+                                simdata.result,
+                                synapse,
+                                name=self.name,
+                                cell_type=target.cell_model.name,
+                                cell_id=target.id,
+                                synapse_type=synapse.synapse_name,
+                            )
 
 
-def _record_synaptic_current(result, synapse):
-    result.record(synapse._pp._ref_i)
+def _record_synaptic_current(result, synapse, **annotations):
+    result.record(synapse._pp._ref_i, **annotations)
