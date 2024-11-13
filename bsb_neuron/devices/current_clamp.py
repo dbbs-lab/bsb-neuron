@@ -33,4 +33,4 @@ class CurrentClamp(NeuronDevice, classmap_entry="current_clamp"):
         clamp = location.section.iclamp(
             x=sx, delay=self.before, duration=self.duration, amplitude=self.amplitude
         )
-        simdata.result.record(clamp._ref_i, **annotations)
+        simdata.result.record(clamp._ref_i, **annotations, unit="nA")
