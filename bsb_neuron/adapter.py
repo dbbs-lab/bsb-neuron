@@ -38,10 +38,10 @@ class NeuronResult(SimulationResult):
         v = p.record(obj)
 
         def flush(segment):
+            if "units" not in annotations.keys():
+                annotations["units"] = "mV"
             segment.analogsignals.append(
-                AnalogSignal(
-                    list(v), units="mV", sampling_period=p.dt * ms, **annotations
-                )
+                AnalogSignal(list(v), sampling_period=p.dt * ms, **annotations)
             )
 
         self.create_recorder(flush)
