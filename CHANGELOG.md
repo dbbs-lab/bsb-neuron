@@ -1,3 +1,8 @@
+## [v4.2.1] - 2024-11-19
+### :bug: Bug Fixes
+- [`c43b4d5`](https://github.com/dbbs-lab/bsb-neuron/commit/c43b4d5806673a158a842cde120e61255bde720c) - assign correct units for Current devices *(PR [#24](https://github.com/dbbs-lab/bsb-neuron/pull/24) by [@filimarc](https://github.com/filimarc))*
+
+
 ## [v4.2.0] - 2024-11-13
 ### :sparkles: New Features
 - [`28cd29b`](https://github.com/dbbs-lab/bsb-neuron/commit/28cd29ba92775d2aa4ef7b5714d8143432e47199) - Added metadata to have more info when loading result nio files *(PR [#23](https://github.com/dbbs-lab/bsb-neuron/pull/23) by [@filimarc](https://github.com/filimarc))*
@@ -17,3 +22,4 @@
 
 [v4.1.0]: https://github.com/dbbs-lab/bsb-neuron/compare/v4.0.3...v4.1.0
 [v4.2.0]: https://github.com/dbbs-lab/bsb-neuron/compare/v4.1.0...v4.2.0
+[v4.2.1]: https://github.com/dbbs-lab/bsb-neuron/compare/v4.2.0...v4.2.1
