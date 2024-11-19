@@ -14,5 +14,6 @@
 * Fix NeuronPopulation class issue by @filimarc in https://github.com/dbbs-lab/bsb-neuron/pull/14
 * Let NeuronAdapter adjust simdata.placement to chunks by @filimarc in https://github.com/dbbs-lab/bsb-neuron/pull/19
 * Fixed GID assignment to transmitters involved in multiple connectivity sets by @danilobenozzo in https://github.com/dbbs-lab/bsb-neuron/pull/15
+
 [v4.1.0]: https://github.com/dbbs-lab/bsb-neuron/compare/v4.0.3...v4.1.0
 [v4.2.0]: https://github.com/dbbs-lab/bsb-neuron/compare/v4.1.0...v4.2.0
