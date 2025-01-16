@@ -32,4 +32,4 @@ class MembraneCurrentRecorder(NeuronDevice, classmap_entry="membrane_current_rec
     def _add_imem_recorder(self, results, location, **annotations):
         section = location.section
         x = location.arc(0)
-        results.record(section(x).__record_imem__(), **annotations)
+        results.record(section(x).__record_imem__(), **annotations, units="nA")

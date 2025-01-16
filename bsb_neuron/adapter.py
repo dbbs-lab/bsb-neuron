@@ -36,6 +36,10 @@ class NeuronResult(SimulationResult):
         from quantities import ms
 
         v = p.record(obj)
+        # if "M" in annotations.keys():
+        #     M = annotations["M"]
+        #     print(M.shape)
+        #     v = M @ np.array(v, dtype=float, ndmin=2)
 
         def flush(segment):
             if "units" not in annotations.keys():
