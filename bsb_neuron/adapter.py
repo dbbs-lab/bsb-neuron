@@ -36,8 +36,6 @@ class NeuronResult(SimulationResult):
         def flush(segment):
             if "units" not in annotations.keys():
                 annotations["units"] = "ms"
-            # time_vect = np.array(time_vect)
-            # list_id = np.full(len(time_vect), cell_id)
             segment.spiketrains.append(
                 SpikeTrain(
                     np.array(time_vect),

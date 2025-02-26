@@ -17,11 +17,14 @@ class SpikeRecorder(NeuronDevice, classmap_entry="spike_recorder"):
             neuron_gids = p.parallel._interpreter.Vector()
             gids_to_cell = {}
             for target in pop:
-                print(f"select Cell {target.id} from {model}")
-                for location in self.locations:
-                    print(f"> processing location {location}")
+                locations = [
+                    k
+                    for k, v in target.locations.items()
+                    if v in self.locations.get_locations(target)
+                ]
+                for location in locations:
                     # Insert a NetCon (if not already present) and retrieve its gid
-                    gid = target.insert_transmitter(adapter.next_gid, (0, 0)).gid
+                    gid = target.insert_transmitter(adapter.next_gid, location).gid
                     gids_to_cell[gid] = target.id
                     adapter.next_gid += 1
                     # Call record_spike() method on selected gid using common spike_times and neuron_gids Vector for
