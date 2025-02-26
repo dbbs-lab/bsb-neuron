@@ -18,11 +18,10 @@ class SpikeRecorder(NeuronDevice, classmap_entry="spike_recorder"):
             gids_to_cell = {}
             for target in pop:
                 locations = [
-                    k
-                    for k, v in target.locations.items()
-                    if v in self.locations.get_locations(target)
+                    location._loc for location in self.locations.get_locations(target)
                 ]
                 for location in locations:
+                    print(f"> Processing Location {location} for cell {target.id}")
                     # Insert a NetCon (if not already present) and retrieve its gid
                     gid = target.insert_transmitter(adapter.next_gid, location).gid
                     gids_to_cell[gid] = target.id
