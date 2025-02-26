@@ -1,3 +1,4 @@
+import numpy as np
 from bsb import LocationTargetting, config
 from patch import p
 
@@ -12,19 +13,34 @@ class SpikeRecorder(NeuronDevice, classmap_entry="spike_recorder"):
         for model, pop in self.targetting.get_targets(
             adapter, simulation, simdata
         ).items():
+            spike_times = p.parallel._interpreter.Vector()
+            neuron_gids = p.parallel._interpreter.Vector()
+            gids_to_cell = {}
             for target in pop:
-                for location in self.locations.get_locations(target):
-                    self._add_spike_recorder(
-                        simdata.result,
-                        target,
-                        location,
-                        adapter.next_gid,
-                        name=self.name,
-                        cell_type=target.cell_model.name,
-                        cell_id=target.id,
-                    )
+                print(f"select Cell {target.id} from {model}")
+                for location in self.locations:
+                    print(f"> processing location {location}")
+                    # Insert a NetCon (if not already present) and retrieve its gid
+                    gid = target.insert_transmitter(adapter.next_gid, (0, 0)).gid
+                    gids_to_cell[gid] = target.id
                     adapter.next_gid += 1
+                    # Call record_spike() method on selected gid using common spike_times and neuron_gids Vector for
+                    # cells in the same population
+                    spike_times, neuron_gids = p.parallel.spike_record(
+                        gid, spike_times, neuron_gids
+                    )
+            # Record a SpikeTrain obj for every model
+            self._add_spike_recorder(
+                simdata.result,
+                spike_times,
+                neuron_gids,
+                gids_to_cell,
+                device=self.name,
+                t_stop=simulation.duration,
+                cell_type=target.cell_model.name,
+                cell_id=target.id,
+                pop_size=len(pop),
+            )
 
-    def _add_spike_recorder(self, results, cell, location, gid, **annotations):
-        gid = cell.insert_transmitter(gid, location).gid
-        results.record_spike(p.parallel.spike_record(gids=gid), **annotations)
+    def _add_spike_recorder(self, results, spike_times, gids, cell_dict, **annotations):
+        results.record_spike(spike_times, gids, cell_dict, **annotations)

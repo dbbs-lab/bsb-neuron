@@ -32,14 +32,17 @@ class NeuronSimulationData(SimulationData):
 
 class NeuronResult(SimulationResult):
 
-    def record_spike(self, time_vect, gid_vect, **annotations):
+    def record_spike(self, time_vect, id_vect, cell_model_id, **annotations):
         def flush(segment):
             if "units" not in annotations.keys():
                 annotations["units"] = "ms"
+            # time_vect = np.array(time_vect)
+            # list_id = np.full(len(time_vect), cell_id)
             segment.spiketrains.append(
                 SpikeTrain(
-                    time_vect,
-                    waveforms=gid_vect,
+                    np.array(time_vect),
+                    gids=np.array(id_vect),
+                    senders=np.array([cell_model_id[gid] for gid in id_vect]),
                     **annotations,
                 )
             )
