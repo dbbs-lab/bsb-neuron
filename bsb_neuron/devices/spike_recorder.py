@@ -21,11 +21,15 @@ class SpikeRecorder(NeuronDevice, classmap_entry="spike_recorder"):
                     location._loc for location in self.locations.get_locations(target)
                 ]
                 for location in locations:
-                    print(f"> Processing Location {location} for cell {target.id}")
                     # Insert a NetCon (if not already present) and retrieve its gid
-                    gid = target.insert_transmitter(adapter.next_gid, location).gid
+                    la = target.get_location(location)
+                    if hasattr(la.section, "_transmitter"):
+                        gid = la.section._transmitter.gid
+                    else:
+                        gid = target.insert_transmitter(adapter.next_gid, location).gid
+                        adapter.next_gid += 1
                     gids_to_cell[gid] = target.id
-                    adapter.next_gid += 1
+
                     # Call record_spike() method on selected gid using common spike_times and neuron_gids Vector for
                     # cells in the same population
                     spike_times, neuron_gids = p.parallel.spike_record(
