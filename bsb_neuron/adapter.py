@@ -38,8 +38,8 @@ class NeuronResult(SimulationResult):
                 annotations["units"] = "ms"
             segment.spiketrains.append(
                 SpikeTrain(
-                    np.array(time_vect),
-                    gids=np.array(id_vect),
+                    np.array(time_vect) if len(time_vect) > 0 else [],
+                    gids=np.array(id_vect) if len(id_vect) > 0 else [],
                     senders=np.array([cell_model_id[gid] for gid in id_vect]),
                     **annotations,
                 )
