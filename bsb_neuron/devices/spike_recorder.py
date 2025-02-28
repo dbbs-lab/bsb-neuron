@@ -26,7 +26,9 @@ class SpikeRecorder(NeuronDevice, classmap_entry="spike_recorder"):
                     if hasattr(la.section, "_transmitter"):
                         gid = la.section._transmitter.gid
                     else:
-                        gid = target.insert_transmitter(adapter.next_gid, location).gid
+                        gid = target.insert_transmitter(
+                            adapter.next_gid, location, delay=1, weight=0.0004
+                        ).gid
                         adapter.next_gid += 1
                     gids_to_cell[gid] = target.id
 

@@ -47,7 +47,7 @@ class TestSpikeRecorder(
                     "cable": {"Ra": 10, "cm": 1},
                     "mechanisms": {"pas": {}, "hh": {}},
                 },
-                "dendrite": {
+                "dendrites": {
                     "cable": {"Ra": 2, "cm": 5},
                     "mechanisms": {"pas": {}, "hh": {}},
                 },
@@ -66,8 +66,12 @@ class TestSpikeRecorder(
                 C=ArborizedModel(model=hh_soma),
             ),
             connection_models=dict(
-                A_to_B=TransceiverModel(synapses=[dict(synapse="ExpSyn")]),
-                B_to_C=TransceiverModel(synapses=[dict(synapse="ExpSyn")]),
+                A_to_B=TransceiverModel(
+                    synapses=[dict(synapse="ExpSyn", weight=0.001, delay=1)]
+                ),
+                B_to_C=TransceiverModel(
+                    synapses=[dict(synapse="ExpSyn", weight=0.001, delay=1)]
+                ),
             ),
             devices=dict(
                 spike_detector=dict(
