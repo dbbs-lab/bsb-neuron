@@ -66,9 +66,6 @@ class TestSpikeRecorder(
                 C=ArborizedModel(model=hh_soma),
             ),
             connection_models=dict(
-                A_to_B=TransceiverModel(
-                    synapses=[dict(synapse="ExpSyn", weight=0.001, delay=1)]
-                ),
                 B_to_C=TransceiverModel(
                     synapses=[dict(synapse="ExpSyn", weight=0.001, delay=1)]
                 ),
@@ -77,15 +74,15 @@ class TestSpikeRecorder(
                 spike_detector=dict(
                     device="spike_recorder",
                     targetting={
-                        "strategy": "by_id",
-                        "ids": {"A": [0], "B": [2], "C": [1, 3]},
+                        "strategy": "cell_model",
+                        "cell_models": ["A", "B", "C"],
                     },
                 ),
                 first_current=dict(
                     device="current_clamp",
                     targetting={
-                        "strategy": "by_id",
-                        "ids": {"A": [0], "C": [1]},
+                        "strategy": "cell_model",
+                        "cell_models": ["A", "C"],
                     },
                     locations={"strategy": "soma"},
                     before=5,
@@ -96,7 +93,7 @@ class TestSpikeRecorder(
                     device="current_clamp",
                     targetting={
                         "strategy": "cell_model",
-                        "cell_models": {"C"},
+                        "cell_models": ["C"],
                     },
                     locations={"strategy": "soma"},
                     before=35,
@@ -110,17 +107,45 @@ class TestSpikeRecorder(
     def test_simple_stimulus(self):
         "Test that spike_recorder correctly records stimulus"
 
-        result = self.network.run_simulation("test")
+        # result = self.network.run_simulation("test")
+        sim = self.network.simulations.test
+        adapter = get_simulation_adapter(sim.simulator)
+        simdata = adapter.prepare(sim)
+        results = adapter.run(sim)
+        result = adapter.collect(sim, simdata, results[0])
         self.assertEqual(
             len(result.spiketrains),
             3,
             "No event should be recorded for B cells but a SpikeTrain should still be allocated",
         )
-        control_data = [
-            ["A", [0], np.array([5.1], dtype=np.float64)],
-            ["B", [], np.array([], dtype=np.float64)],
-            ["C", [1, 1, 3], np.array([5.1, 35.1, 35.1], dtype=np.float64)],
-        ]
+        # control_data = [
+        #     ["A", [0], np.array([5.1], dtype=np.float64)],
+        #     ["B", [], np.array([], dtype=np.float64)],
+        #     ["C", [1, 1, 3], np.array([5.1, 35.1, 35.1], dtype=np.float64)],
+        # ]
+        control_data = []
+        for cm in sim.cell_models:
+            appo = []
+            pop = [cell.id for cell in simdata.populations[sim.cell_models[cm]]]
+            pop_len = len(pop)
+            appo.append(cm)
+            if cm == "A":
+                appo.append(list(pop))
+                appo.append(np.full(pop_len, [5.1], dtype=np.float64))
+            if cm == "B":
+                appo.append([])
+                appo.append(np.array([], dtype=np.float64))
+            if cm == "C":
+                appo.append([*pop, *pop])
+                tot_times = np.concatenate(
+                    (
+                        np.full(pop_len, [5.1], dtype=np.float64),
+                        np.full(pop_len, [35.1], dtype=np.float64),
+                    )
+                )
+                appo.append(tot_times)
+            control_data.append(appo)
+
         for elem, spike_train in enumerate(result.spiketrains):
             self.assertEqual(control_data[elem][0], spike_train.annotations["cell_type"])
             self.assertEqual(
