@@ -105,9 +105,8 @@ class TestSpikeRecorder(
         self.network.compile()
 
     def test_simple_stimulus(self):
-        "Test that spike_recorder correctly records stimulus"
+        """Test that spike_recorder correctly records stimulus"""
 
-        # result = self.network.run_simulation("test")
         sim = self.network.simulations.test
         adapter = get_simulation_adapter(sim.simulator)
         simdata = adapter.prepare(sim)
@@ -118,11 +117,6 @@ class TestSpikeRecorder(
             3,
             "No event should be recorded for B cells but a SpikeTrain should still be allocated",
         )
-        # control_data = [
-        #     ["A", [0], np.array([5.1], dtype=np.float64)],
-        #     ["B", [], np.array([], dtype=np.float64)],
-        #     ["C", [1, 1, 3], np.array([5.1, 35.1, 35.1], dtype=np.float64)],
-        # ]
         control_data = []
         for cm in sim.cell_models:
             appo = []
