@@ -105,8 +105,47 @@ class TestSpikeRecorder(
         self.network.compile()
 
     def test_simple_stimulus(self):
-        """Test that spike_recorder correctly records stimulus"""
+        sim = self.network.simulations.test
+        adapter = get_simulation_adapter(sim.simulator)
+        simdata = adapter.prepare(sim)
+        results = adapter.run(sim)
+        result = adapter.collect(sim, simdata, results[0])
+        pop_lenghts = []
+        for cm in sim.cell_models:
+            pop = simdata.populations[sim.cell_models[cm]]
+            pop_lenghts.append(len(pop))
 
+        for index, spk in enumerate(result.spiketrains[: pop_lenghts[0] : 1]):
+            self.assertEqual(spk.annotations["cell_type"], "A")
+            self.assertEqual(spk.annotations["cell_id"], index)
+            self.assertClose(
+                spk.magnitude,
+                np.full(pop_lenghts[0], 5.1, dtype=np.float64),
+                f"SpikeTrains for cell A do not match!",
+            )
+        second_interval = pop_lenghts[0] + pop_lenghts[1]
+        for index, spk in enumerate(
+            result.spiketrains[pop_lenghts[0] : second_interval : 1]
+        ):
+            self.assertEqual(spk.annotations["cell_type"], "B")
+            self.assertEqual(spk.annotations["cell_id"], index)
+            self.assertClose(
+                spk.magnitude, np.array([]), f"SpikeTrains for cell B should be empty!"
+            )
+        for index, spk in enumerate(result.spiketrains[second_interval::1]):
+            self.assertEqual(spk.annotations["cell_type"], "C")
+            self.assertEqual(spk.annotations["cell_id"], index)
+            self.assertClose(
+                spk.magnitude,
+                np.full((pop_lenghts[0], 2), [5.1, 35.1], dtype=np.float64),
+                f"SpikeTrains for cell C do not match!",
+            )
+
+    def test_join_population(self):
+        """Test that spike_recorder correctly records stimulus and stores a spiketrain for every cell population"""
+        cfg = self.network.configuration
+        cfg.simulations.test.devices.spike_detector.join_population = True
+        self.network.storage.store_active_config(cfg)
         sim = self.network.simulations.test
         adapter = get_simulation_adapter(sim.simulator)
         simdata = adapter.prepare(sim)
