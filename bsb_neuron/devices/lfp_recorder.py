@@ -1,19 +1,56 @@
-from bsb import LocationTargetting, config
-from lfpykit import CellGeometry, LineSourcePotential
+from bsb import LocationTargetting, config, types
+from lfpykit import CellGeometry, LineSourcePotential, RecMEAElectrode
 import numpy as np
+import MEAutility as mu
 
 from .membrane_current_recorder import MembraneCurrentRecorder
 
 
 @config.node
+class MeaElectrode:
+    electrode_name = config.attr(type=str, required=True)
+    definitions = config.dict(
+        type=types.or_(types.list(type=int), types.list(type=float), float, str),
+        default=None,
+    )
+    rotations = config.dict(type=types.or_(types.list(type=int), float), default=None)
+
+    def __boot__(self):
+        if self.electrode_name in mu.return_mea_list():
+            self.custom = False
+        else:
+            if self.definitions:
+                self.custom = True
+                self.definitions["electrode_name"] = self.electrode_name
+
+            else:
+                raise ValueError(
+                    f"Do not find {self.electrode_name} probe. Available models for MEA arrays: {mu.return_mea_list()}"
+                )
+
+    def return_probe(self):
+        # Check if we are using a custom probe and create MEA object
+        if self.custom:
+            pos = mu.core.get_positions(self.definitions)
+            if mu.core.check_if_rect(self.definitions):
+                mea_obj = mu.RectMEA(positions=pos, info=self.definitions)
+            else:
+                mea_obj = mu.MEA(positions=pos, info=self.definitions)
+        else:
+            mea_obj = mu.MEA.return_mea(self.electrode_name)
+        # If a rotation is selected rotate the array
+        if self.rotations:
+            mea_obj.rotate(self.rotations["axis"], self.rotations["angle"])
+        return mea_obj
+
+
+@config.node
 class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
     locations = config.attr(type=LocationTargetting, default={"strategy": "everywhere"})
-    x_s = np.ones(10) * 50
-    y_s = np.ones(10) * 50
-    z_s = np.arange(10) * 20
-    sigma = 0.3
+    mea_electrode = config.attr(type=MeaElectrode, required=True)
 
     def implement(self, adapter, simulation, simdata):
+        my_probe = self.mea_electrode.return_probe()
         for model, pop in self.targetting.get_targets(
             adapter, simulation, simdata
         ).items():
@@ -46,13 +83,24 @@ class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
                 # create CellGeometry of targer by using the selected locations
                 # matrix M (given the probe geometry/properties)
                 origin = origins[target.id]
-                print('origin cell ', target.id, ' ', origin)
+                print("origin cell ", target.id, " ", origin)
                 cell_i = CellGeometry(
                     x=x_i + origin[0], y=y_i + origin[1], z=z_i + origin[2], d=d_i
                 )
-                lsp = LineSourcePotential(
-                    cell_i, x=self.x_s, y=self.y_s, z=self.z_s, sigma=self.sigma
+
+                lsp = RecMEAElectrode(
+                    cell_i,
+                    sigma_T=0.3,
+                    sigma_S=1.5,
+                    sigma_G=0.0,
+                    h=300.0,
+                    z_shift=0.0,
+                    steps=20,
+                    probe=my_probe,
                 )
+                # lsp = LineSourcePotential(
+                #     cell_i, x=self.x_s, y=self.y_s, z=self.z_s, sigma=self.sigma
+                # )
                 M_i = lsp.get_transformation_matrix()
                 pos_nan = np.isnan(
                     np.sum(M_i, 0)
