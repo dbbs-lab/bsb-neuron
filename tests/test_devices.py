@@ -111,11 +111,13 @@ class TestSpikeRecorder(
         results = adapter.run(sim)
         result = adapter.collect(sim, simdata, results[0])
         pop_lenghts = []
+        ids = []
         for cm in sim.cell_models:
-            pop = simdata.populations[sim.cell_models[cm]]
+            pop = [cell.id for cell in simdata.populations[sim.cell_models[cm]]]
             pop_lenghts.append(len(pop))
+            ids.append(pop)
 
-        for index, spk in enumerate(result.spiketrains[: pop_lenghts[0] : 1]):
+        for index, spk in zip(ids[0], result.spiketrains[: pop_lenghts[0] : 1]):
             self.assertEqual(spk.annotations["cell_type"], "A")
             self.assertEqual(spk.annotations["cell_id"], index)
             self.assertClose(
@@ -124,15 +126,15 @@ class TestSpikeRecorder(
                 f"SpikeTrains for cell A do not match!",
             )
         second_interval = pop_lenghts[0] + pop_lenghts[1]
-        for index, spk in enumerate(
-            result.spiketrains[pop_lenghts[0] : second_interval : 1]
+        for index, spk in zip(
+            ids[1], result.spiketrains[pop_lenghts[0] : second_interval : 1]
         ):
             self.assertEqual(spk.annotations["cell_type"], "B")
             self.assertEqual(spk.annotations["cell_id"], index)
             self.assertClose(
                 spk.magnitude, np.array([]), f"SpikeTrains for cell B should be empty!"
             )
-        for index, spk in enumerate(result.spiketrains[second_interval::1]):
+        for index, spk in zip(ids[2], result.spiketrains[second_interval::1]):
             self.assertEqual(spk.annotations["cell_type"], "C")
             self.assertEqual(spk.annotations["cell_id"], index)
             self.assertClose(

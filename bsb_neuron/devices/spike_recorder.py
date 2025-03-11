@@ -7,6 +7,17 @@ from ..device import NeuronDevice
 
 @config.node
 class SpikeRecorder(NeuronDevice, classmap_entry="spike_recorder"):
+    """
+    Device to record the spike events in selected locations.
+
+    :param location: The LocationTargetting chosen to select location on cells, default selects "soma".
+    :type LocatioTargetting: ~bsb.simulation.targetting.LocationTargetting
+
+    :param join_population: If set to True, a SpikeTrain object will be created for each cell population; if set to False,
+     a SpikeTrain will be stored for each individual location. The default value is False.
+    :type bool
+    """
+
     locations = config.attr(type=LocationTargetting, default={"strategy": "soma"})
     join_population = config.attr(type=bool, default=False)
 
