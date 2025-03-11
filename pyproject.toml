@@ -12,7 +12,9 @@ dynamic = ["version", "description"]
 dependencies = [
     "bsb-core~=4.0",
     "nrn-patch~=4.0",
-    "arborize[neuron]~=4.1"
+    "arborize[neuron]~=4.1",
+    "MEAutility~=1.5",
+    "LFPykit~=0.5"
 ]
 
 [tool.flit.module]

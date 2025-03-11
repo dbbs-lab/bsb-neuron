@@ -1,7 +1,7 @@
-from bsb import LocationTargetting, config, types
-from lfpykit import CellGeometry, LineSourcePotential, RecMEAElectrode
-import numpy as np
 import MEAutility as mu
+import numpy as np
+from bsb import LocationTargetting, config, types
+from lfpykit import CellGeometry, RecMEAElectrode
 
 from .membrane_current_recorder import MembraneCurrentRecorder
 
