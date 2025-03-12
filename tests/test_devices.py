@@ -184,6 +184,6 @@ class TestSpikeRecorder(
         for elem, spike_train in enumerate(result.spiketrains):
             self.assertEqual(control_data[elem][0], spike_train.annotations["cell_type"])
             self.assertEqual(
-                control_data[elem][1], list(spike_train.annotations["senders"])
+                control_data[elem][1], list(spike_train.array_annotations["senders"])
             )
             self.assertClose(control_data[elem][2], spike_train.magnitude)
