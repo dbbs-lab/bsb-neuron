@@ -1,7 +1,8 @@
 from bsb import LocationTargetting, config, types
 from lfpykit import CellGeometry, LineSourcePotential, RecMEAElectrode
+from copy import deepcopy
 import numpy as np
-import MEAutility as mu
+import MEAutility.core as mu
 
 from .membrane_current_recorder import MembraneCurrentRecorder
 
@@ -27,12 +28,13 @@ class MeaElectrode:
                 raise ValueError(
                     f"Do not find {self.electrode_name} probe. Available models for MEA arrays: {mu.return_mea_list()}"
                 )
+        self.probe = self.return_probe()
 
     def return_probe(self):
         # Check if we are using a custom probe and create MEA object
         if self.custom:
-            pos = mu.core.get_positions(self.definitions)
-            if mu.core.check_if_rect(self.definitions):
+            pos = mu.get_positions(self.definitions)
+            if mu.check_if_rect(self.definitions):
                 mea_obj = mu.RectMEA(positions=pos, info=self.definitions)
             else:
                 mea_obj = mu.MEA(positions=pos, info=self.definitions)
@@ -50,7 +52,7 @@ class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
     mea_electrode = config.attr(type=MeaElectrode, required=True)
 
     def implement(self, adapter, simulation, simdata):
-        my_probe = self.mea_electrode.return_probe()
+        my_probe = self.mea_electrode.probe
         for model, pop in self.targetting.get_targets(
             adapter, simulation, simdata
         ).items():
