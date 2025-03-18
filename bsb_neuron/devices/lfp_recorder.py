@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 import MEAutility.core as mu
 import numpy as np
 from bsb import LocationTargetting, config, types
@@ -29,16 +27,20 @@ class MeaElectrode:
                 raise ValueError(
                     f"Do not find {self.electrode_name} probe. Available models for MEA arrays: {mu.return_mea_list()}"
                 )
-        self.probe = self.return_probe()
 
     def return_probe(self):
         # Check if we are using a custom probe and create MEA object
         if self.custom:
-            pos = mu.get_positions(self.definitions)
-            if mu.check_if_rect(self.definitions):
-                mea_obj = mu.RectMEA(positions=pos, info=self.definitions)
+            # Clean definitions, make sure that scaffold objects are not passed to MEA classes
+            info_dict = {}
+            for key, value in self.definitions.items():
+                if key not in ["scaffold", "_config_parent"]:
+                    info_dict[key] = value
+            pos = mu.get_positions(info_dict)
+            if mu.check_if_rect(info_dict):
+                mea_obj = mu.RectMEA(positions=pos, info=info_dict)
             else:
-                mea_obj = mu.MEA(positions=pos, info=self.definitions)
+                mea_obj = mu.MEA(positions=pos, info=info_dict)
         else:
             mea_obj = mu.MEA.return_mea(self.electrode_name)
         # If a rotation is selected rotate the array
@@ -53,7 +55,7 @@ class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
     mea_electrode = config.attr(type=MeaElectrode, required=True)
 
     def implement(self, adapter, simulation, simdata):
-        my_probe = self.mea_electrode.probe
+        my_probe = self.mea_electrode.return_probe()
         for model, pop in self.targetting.get_targets(
             adapter, simulation, simdata
         ).items():
@@ -101,24 +103,22 @@ class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
                     steps=20,
                     probe=my_probe,
                 )
-                # lsp = LineSourcePotential(
-                #     cell_i, x=self.x_s, y=self.y_s, z=self.z_s, sigma=self.sigma
-                # )
-                M_i = lsp.get_transformation_matrix()
-                pos_nan = np.isnan(
-                    np.sum(M_i, 0)
-                )  # check for nan, this happens when points with 0 length
 
-                for i_loc, location in enumerate(locations):
-                    if ~pos_nan[i_loc]:
-                        super()._add_imem_recorder(
-                            simdata.result,
-                            location,
-                            name=self.name,
-                            cell_type=target.cell_model.name,
-                            cell_id=target.id,
-                            loc=location._loc,
-                            M=M_i[:, i_loc],  # .reshape([M_i.shape[0],1]),
-                        )
+                # M_i = lsp.get_transformation_matrix()
+                # pos_nan = np.isnan(
+                #     np.sum(M_i, 0)
+                # )  # check for nan, this happens when points with 0 length
+                #
+                # for i_loc, location in enumerate(locations):
+                #     if ~pos_nan[i_loc]:
+                #         super()._add_imem_recorder(
+                #             simdata.result,
+                #             location,
+                #             name=self.name,
+                #             cell_type=target.cell_model.name,
+                #             cell_id=target.id,
+                #             loc=location._loc,
+                #             M=M_i[:, i_loc],  # .reshape([M_i.shape[0],1]),
+                #         )
                 # pass M through the device
                 # find where to apply it, nb it can be applied at each time point and del the simulate signal (keep only V_ex)
