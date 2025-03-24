@@ -1,3 +1,5 @@
+import typing
+
 import MEAutility.core as mu
 import numpy as np
 from bsb import LocationTargetting, config, types
@@ -9,10 +11,7 @@ from .membrane_current_recorder import MembraneCurrentRecorder
 @config.node
 class MeaElectrode:
     electrode_name = config.attr(type=str, required=True)
-    definitions = config.dict(
-        type=types.or_(types.list(type=int), types.list(type=float), float, str),
-        default=None,
-    )
+    definitions: dict[typing.Any] = config.dict(type=types.any_())
     rotations = config.dict(type=types.or_(types.list(type=int), float), default=None)
 
     def __boot__(self):
@@ -104,7 +103,7 @@ class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
                     probe=my_probe,
                 )
 
-                # M_i = lsp.get_transformation_matrix()
+                M_i = lsp.get_transformation_matrix()
                 # pos_nan = np.isnan(
                 #     np.sum(M_i, 0)
                 # )  # check for nan, this happens when points with 0 length
