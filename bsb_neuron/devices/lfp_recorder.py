@@ -13,6 +13,7 @@ class MeaElectrode:
     electrode_name = config.attr(type=str, required=True)
     definitions: dict[typing.Any] = config.dict(type=types.any_())
     rotations = config.dict(type=types.or_(types.list(type=int), float), default=None)
+    shift = config.list(type=int, default=None)
 
     def __boot__(self):
         if self.electrode_name in mu.return_mea_list():
@@ -45,6 +46,8 @@ class MeaElectrode:
         # If a rotation is selected rotate the array
         if self.rotations:
             mea_obj.rotate(self.rotations["axis"], self.rotations["angle"])
+        if self.shift:
+            mea_obj.move(self.shift)
         return mea_obj
 
 
@@ -60,7 +63,7 @@ class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
         ).items():
 
             origins = simdata.placement[model].load_positions()
-            for target in pop:
+            for local_cell_id, target in enumerate(pop):
                 # collect all locations from the target cell
                 locations = self.locations.get_locations(target)
                 n_locs = len(locations)
@@ -84,40 +87,44 @@ class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
                     d_i[i_loc] = [section.diam3d(idx_loc), section.diam3d(idx_next_loc)]
 
                 # note: recording by default done section(loc.arc(0))
-                # create CellGeometry of targer by using the selected locations
+                # create CellGeometry of target by using the selected locations
                 # matrix M (given the probe geometry/properties)
-                origin = origins[target.id]
+                # local_cell_id = simdata.placement[model].convert_to_local(target.id)[0]
+                origin = origins[local_cell_id]
                 print("origin cell ", target.id, " ", origin)
+                # print(
+                #     f"Rank: {MPI.get_rank()} - {target.id} l {simdata.placement[model].convert_to_local(target.id)} - pop: {len(origins)}"
+                # )
                 cell_i = CellGeometry(
                     x=x_i + origin[0], y=y_i + origin[1], z=z_i + origin[2], d=d_i
                 )
-
                 lsp = RecMEAElectrode(
                     cell_i,
                     sigma_T=0.3,
                     sigma_S=1.5,
                     sigma_G=0.0,
-                    h=300.0,
-                    z_shift=0.0,
+                    h=400.0,
+                    z_shift=-100.0,
+                    method="linesource",
                     steps=20,
                     probe=my_probe,
                 )
 
                 M_i = lsp.get_transformation_matrix()
-                # pos_nan = np.isnan(
-                #     np.sum(M_i, 0)
-                # )  # check for nan, this happens when points with 0 length
-                #
-                # for i_loc, location in enumerate(locations):
-                #     if ~pos_nan[i_loc]:
-                #         super()._add_imem_recorder(
-                #             simdata.result,
-                #             location,
-                #             name=self.name,
-                #             cell_type=target.cell_model.name,
-                #             cell_id=target.id,
-                #             loc=location._loc,
-                #             M=M_i[:, i_loc],  # .reshape([M_i.shape[0],1]),
-                #         )
+                pos_nan = np.isnan(
+                    np.sum(M_i, 0)
+                )  # check for nan, this happens when points with 0 length
+
+                for i_loc, location in enumerate(locations):
+                    if ~pos_nan[i_loc]:
+                        super()._add_imem_recorder(
+                            simdata.result,
+                            location,
+                            name=self.name,
+                            cell_type=target.cell_model.name,
+                            cell_id=target.id,
+                            loc=location._loc,
+                            M=M_i[:, i_loc],  # .reshape([M_i.shape[0], 1])
+                        )
                 # pass M through the device
                 # find where to apply it, nb it can be applied at each time point and del the simulate signal (keep only V_ex)
