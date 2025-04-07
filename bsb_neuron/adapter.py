@@ -4,7 +4,6 @@ import typing
 
 import numpy as np
 from bsb import (
-    MPI,
     AdapterError,
     AdapterProgress,
     Chunk,
@@ -82,7 +81,7 @@ class NeuronAdapter(SimulatorAdapter):
             self.engine.celsius = simulation.temperature
             self.engine.tstop = simulation.duration
             report("Load balancing", level=2)
-            self.load_balance(simulation)
+            self.load_balance(simulation, comm)
             report("Creating neurons", level=2)
             self.create_neurons(simulation)
             report("Creating transmitters", level=2)
@@ -94,17 +93,17 @@ class NeuronAdapter(SimulatorAdapter):
             del self.simdata[simulation]
             raise
 
-    def load_balance(self, simulation):
+    def load_balance(self, simulation, comm):
         simdata = self.simdata[simulation]
         chunk_stats = simulation.scaffold.storage.get_chunk_stats()
-        size = MPI.get_size()
+        size = comm.get_size()
         all_chunks = [Chunk.from_id(int(chunk), None) for chunk in chunk_stats.keys()]
         simdata.node_chunk_alloc = [all_chunks[rank::size] for rank in range(0, size)]
         simdata.chunk_node_map = {}
         for node, chunks in enumerate(simdata.node_chunk_alloc):
             for chunk in chunks:
                 simdata.chunk_node_map[chunk] = node
-        simdata.chunks = simdata.node_chunk_alloc[MPI.get_rank()]
+        simdata.chunks = simdata.node_chunk_alloc[comm.get_rank()]
         simdata.placement = {
             model: model.get_placement_set(chunks=simdata.chunks)
             for model in simulation.cell_models.values()
