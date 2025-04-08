@@ -60,8 +60,8 @@ def fill_parameter_data(parameters, data):
 class NeuronAdapter(SimulatorAdapter):
     initial = -65
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, comm=None):
+        super().__init__(comm=comm)
         self.network = None
         self.next_gid = 0
 
@@ -71,7 +71,7 @@ class NeuronAdapter(SimulatorAdapter):
 
         return engine
 
-    def prepare(self, simulation, comm=None):
+    def prepare(self, simulation):
         self.simdata[simulation] = NeuronSimulationData(
             simulation, result=NeuronResult(simulation)
         )
@@ -81,7 +81,7 @@ class NeuronAdapter(SimulatorAdapter):
             self.engine.celsius = simulation.temperature
             self.engine.tstop = simulation.duration
             report("Load balancing", level=2)
-            self.load_balance(simulation, comm)
+            self.load_balance(simulation)
             report("Creating neurons", level=2)
             self.create_neurons(simulation)
             report("Creating transmitters", level=2)
@@ -93,17 +93,17 @@ class NeuronAdapter(SimulatorAdapter):
             del self.simdata[simulation]
             raise
 
-    def load_balance(self, simulation, comm):
+    def load_balance(self, simulation):
         simdata = self.simdata[simulation]
         chunk_stats = simulation.scaffold.storage.get_chunk_stats()
-        size = comm.get_size()
+        size = self.comm.get_size()
         all_chunks = [Chunk.from_id(int(chunk), None) for chunk in chunk_stats.keys()]
         simdata.node_chunk_alloc = [all_chunks[rank::size] for rank in range(0, size)]
         simdata.chunk_node_map = {}
         for node, chunks in enumerate(simdata.node_chunk_alloc):
             for chunk in chunks:
                 simdata.chunk_node_map[chunk] = node
-        simdata.chunks = simdata.node_chunk_alloc[comm.get_rank()]
+        simdata.chunks = simdata.node_chunk_alloc[self.comm.get_rank()]
         simdata.placement = {
             model: model.get_placement_set(chunks=simdata.chunks)
             for model in simulation.cell_models.values()
