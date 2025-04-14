@@ -10,7 +10,7 @@ license = { file = "LICENSE" }
 classifiers = ["License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)"]
 dynamic = ["version", "description"]
 dependencies = [
-    "bsb-core~=4.0",
+    "bsb-core~=5.0",
     "nrn-patch~=4.0",
     "arborize[neuron]~=4.1",
     "MEAutility~=1.5",
@@ -29,7 +29,7 @@ test = [
     "bsb-core[parallel]",
     "bsb-test~=4.0",
     "coverage~=7.0",
-    "bsb-hdf5~=4.0"
+    "bsb-hdf5~=5.0"
 ]
 dev = [
     "bsb-neuron[test]",
@@ -49,7 +49,7 @@ line-length = 90
 profile = "black"
 
 [tool.bumpversion]
-current_version = "4.2.1"
+current_version = "4.2.2"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"

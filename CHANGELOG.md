@@ -1,3 +1,8 @@
+## [v4.2.2] - 2025-01-07
+### :bug: Bug Fixes
+- [`3d76d36`](https://github.com/dbbs-lab/bsb-neuron/commit/3d76d36476a73b0c714a15f1334e17df5ff844dc) - BSB version dependencies *(PR [#25](https://github.com/dbbs-lab/bsb-neuron/pull/25) by [@drodarie](https://github.com/drodarie))*
+
+
 ## [v4.2.1] - 2024-11-19
 ### :bug: Bug Fixes
 - [`c43b4d5`](https://github.com/dbbs-lab/bsb-neuron/commit/c43b4d5806673a158a842cde120e61255bde720c) - assign correct units for Current devices *(PR [#24](https://github.com/dbbs-lab/bsb-neuron/pull/24) by [@filimarc](https://github.com/filimarc))*
@@ -23,3 +28,4 @@
 [v4.1.0]: https://github.com/dbbs-lab/bsb-neuron/compare/v4.0.3...v4.1.0
 [v4.2.0]: https://github.com/dbbs-lab/bsb-neuron/compare/v4.1.0...v4.2.0
 [v4.2.1]: https://github.com/dbbs-lab/bsb-neuron/compare/v4.2.0...v4.2.1
+[v4.2.2]: https://github.com/dbbs-lab/bsb-neuron/compare/v4.2.1...v4.2.2
