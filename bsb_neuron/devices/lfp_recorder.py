@@ -63,6 +63,8 @@ class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
         ).items():
 
             origins = simdata.placement[model].load_positions()
+            list_of_sections = [[] for x in range(len(pop))]
+            trs_matrices = [0 for x in range(len(pop))]
             for local_cell_id, target in enumerate(pop):
                 # collect all locations from the target cell
                 locations = self.locations.get_locations(target)
@@ -73,6 +75,7 @@ class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
                 d_i = np.zeros([n_locs, 2])
 
                 for i_loc, location in enumerate(locations):
+
                     # get for each location xyz coords and diam
                     section = location.section
                     idx_loc = section.locations.index(
@@ -96,7 +99,7 @@ class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
                 #     f"Rank: {MPI.get_rank()} - {target.id} l {simdata.placement[model].convert_to_local(target.id)} - pop: {len(origins)}"
                 # )
                 cell_i = CellGeometry(
-                    x=x_i + origin[0], y=y_i + origin[1], z=z_i + origin[2], d=d_i
+                    x=y_i + origin[0], y=x_i + origin[1], z=z_i + origin[2], d=d_i
                 )
                 lsp = RecMEAElectrode(
                     cell_i,
@@ -111,20 +114,48 @@ class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
                 )
 
                 M_i = lsp.get_transformation_matrix()
-                pos_nan = np.isnan(
-                    np.sum(M_i, 0)
+
+                print(f" Size of M: {M_i.shape} ")
+                pos_nan = np.logical_not(
+                    np.isnan(np.sum(M_i, 0))
                 )  # check for nan, this happens when points with 0 length
 
+                trs_matrices[local_cell_id] = M_i[:, pos_nan]
+
                 for i_loc, location in enumerate(locations):
-                    if ~pos_nan[i_loc]:
-                        super()._add_imem_recorder(
-                            simdata.result,
-                            location,
-                            name=self.name,
-                            cell_type=target.cell_model.name,
-                            cell_id=target.id,
-                            loc=location._loc,
-                            M=M_i[:, i_loc],  # .reshape([M_i.shape[0], 1])
+                    if pos_nan[i_loc]:
+                        section = location.section
+                        x = location.arc(0)
+                        list_of_sections[local_cell_id].append(
+                            section(x).__record_imem__()
                         )
-                # pass M through the device
-                # find where to apply it, nb it can be applied at each time point and del the simulate signal (keep only V_ex)
+                print(f" Size of obj: {len(list_of_sections[local_cell_id])} ")
+                print(
+                    f" Size of filtered M: {trs_matrices[local_cell_id].shape} - Nan list {np.sum(pos_nan)} - Len locations: {len(locations)}"
+                )
+
+            trs_matrix_size = np.sum([np.shape(mat)[1] for mat in trs_matrices])
+            obj_list_size = np.sum([len(obj) for obj in list_of_sections])
+            if trs_matrix_size != obj_list_size:
+                raise ValueError(
+                    f" In LFP recorder {self.name} numbers of computed sections do not match!  {trs_matrix_size} != {obj_list_size}"
+                )
+
+            simdata.result.record_lfp(
+                list_of_sections,
+                trs_matrices,
+                name=self.name,
+                cell_type=target.cell_model.name,
+            )
+
+            # super()._add_imem_recorder(
+            #     simdata.result,
+            #     location,
+            #     name=self.name,
+            #     cell_type=target.cell_model.name,
+            #     cell_id=target.id,
+            #     loc=location._loc,
+            #     M=M_i[:, i_loc],  # .reshape([M_i.shape[0], 1])
+            # )
+            # pass M through the device
+            # find where to apply it, nb it can be applied at each time point and del the simulate signal (keep only V_ex)

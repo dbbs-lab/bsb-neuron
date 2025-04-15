@@ -49,6 +49,30 @@ class NeuronResult(SimulationResult):
 
         self.create_recorder(flush)
 
+    def record_lfp(self, obj_list, matrices, **annotations):
+        from patch import p
+        from quantities import ms
+
+        v_list = [[p.record(obj) for obj in location_list] for location_list in obj_list]
+
+        def flush(segment):
+            if "units" not in annotations.keys():
+                annotations["units"] = "mV"
+
+            V = sum(
+                [
+                    np.array(matrices[cell_id]) @ np.array(v_list[cell_id])
+                    for cell_id in range(len(obj_list))
+                ]
+            )
+            # Need to flatten the array to pass AnalogSignal -> V_flat should be something like: [(mea array at time 0), (mea array at time 1)...(final mea array)]
+            V_flat = V.flatten(order="F")
+            segment.analogsignals.append(
+                AnalogSignal(V_flat, sampling_period=p.dt * ms, **annotations)
+            )
+
+        self.create_recorder(flush)
+
 
 @contextlib.contextmanager
 def fill_parameter_data(parameters, data):
