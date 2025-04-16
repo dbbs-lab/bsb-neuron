@@ -55,6 +55,9 @@ class MeaElectrode:
 class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
     locations = config.attr(type=LocationTargetting, default={"strategy": "everywhere"})
     mea_electrode = config.attr(type=MeaElectrode, required=True)
+    checkpoints = config.attr(
+        type=types.or_(float, types.ndarray(dtype=float)), default=[]
+    )
 
     def implement(self, adapter, simulation, simdata):
         my_probe = self.mea_electrode.return_probe()

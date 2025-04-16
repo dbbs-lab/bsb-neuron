@@ -6,6 +6,7 @@ import numpy as np
 from bsb import (
     AdapterError,
     AdapterProgress,
+    AdapterCheckpoint,
     Chunk,
     DatasetNotFoundError,
     SimulationData,
@@ -148,11 +149,17 @@ class NeuronAdapter(SimulatorAdapter):
             self.engine.finitialize(self.initial)
             duration = max(sim.duration for sim in simulations)
             progress = AdapterProgress(duration)
+            checkpoint = AdapterCheckpoint(simulations)
             for oi, i in progress.steps(step=1):
                 pc.psolve(i)
                 tick = progress.tick(i)
                 for listener in self._progress_listeners:
                     listener(simulations, tick)
+                if checkpoint.get_status(i):
+                    [
+                        self.simdata[sim].result.flush()
+                        for sim in checkpoint.checkpoints[i]
+                    ]
             progress.complete()
             report("Finished simulation.", level=2)
         finally:
