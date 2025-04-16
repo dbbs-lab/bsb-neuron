@@ -149,8 +149,10 @@ class NeuronAdapter(SimulatorAdapter):
             self.engine.finitialize(self.initial)
             duration = max(sim.duration for sim in simulations)
             progress = AdapterProgress(duration)
+            progress_step = 1
             checkpoint = AdapterCheckpoint(simulations)
-            for oi, i in progress.steps(step=1):
+            minimum_step = checkpoint.suitable_step(progress_step)
+            for oi, i in progress.steps(step=minimum_step):
                 pc.psolve(i)
                 tick = progress.tick(i)
                 for listener in self._progress_listeners:
