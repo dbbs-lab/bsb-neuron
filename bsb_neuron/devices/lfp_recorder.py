@@ -65,6 +65,7 @@ class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
             origins = simdata.placement[model].load_positions()
             list_of_sections = [[] for x in range(len(pop))]
             trs_matrices = [0 for x in range(len(pop))]
+            global_ids = [0 for x in range(len(pop))]
             for local_cell_id, target in enumerate(pop):
                 # collect all locations from the target cell
                 locations = self.locations.get_locations(target)
@@ -92,12 +93,9 @@ class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
                 # note: recording by default done section(loc.arc(0))
                 # create CellGeometry of target by using the selected locations
                 # matrix M (given the probe geometry/properties)
-                # local_cell_id = simdata.placement[model].convert_to_local(target.id)[0]
+
                 origin = origins[local_cell_id]
-                print("origin cell ", target.id, " ", origin)
-                # print(
-                #     f"Rank: {MPI.get_rank()} - {target.id} l {simdata.placement[model].convert_to_local(target.id)} - pop: {len(origins)}"
-                # )
+
                 cell_i = CellGeometry(
                     x=y_i + origin[0], y=x_i + origin[1], z=z_i + origin[2], d=d_i
                 )
@@ -115,12 +113,13 @@ class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
 
                 M_i = lsp.get_transformation_matrix()
 
-                print(f" Size of M: {M_i.shape} ")
                 pos_nan = np.logical_not(
                     np.isnan(np.sum(M_i, 0))
                 )  # check for nan, this happens when points with 0 length
 
+                # Store the transform matrix and the cell id in lists
                 trs_matrices[local_cell_id] = M_i[:, pos_nan]
+                global_ids[local_cell_id] = target.id
 
                 for i_loc, location in enumerate(locations):
                     if pos_nan[i_loc]:
@@ -129,10 +128,6 @@ class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
                         list_of_sections[local_cell_id].append(
                             section(x).__record_imem__()
                         )
-                print(f" Size of obj: {len(list_of_sections[local_cell_id])} ")
-                print(
-                    f" Size of filtered M: {trs_matrices[local_cell_id].shape} - Nan list {np.sum(pos_nan)} - Len locations: {len(locations)}"
-                )
 
             trs_matrix_size = np.sum([np.shape(mat)[1] for mat in trs_matrices])
             obj_list_size = np.sum([len(obj) for obj in list_of_sections])
@@ -145,17 +140,6 @@ class LFPRecorder(MembraneCurrentRecorder, classmap_entry="lfp_recorder"):
                 list_of_sections,
                 trs_matrices,
                 name=self.name,
-                cell_type=target.cell_model.name,
+                cell_type=model.name,
+                id_list=global_ids,
             )
-
-            # super()._add_imem_recorder(
-            #     simdata.result,
-            #     location,
-            #     name=self.name,
-            #     cell_type=target.cell_model.name,
-            #     cell_id=target.id,
-            #     loc=location._loc,
-            #     M=M_i[:, i_loc],  # .reshape([M_i.shape[0], 1])
-            # )
-            # pass M through the device
-            # find where to apply it, nb it can be applied at each time point and del the simulate signal (keep only V_ex)
