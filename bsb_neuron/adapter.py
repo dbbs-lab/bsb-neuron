@@ -6,6 +6,7 @@ import numpy as np
 from bsb import (
     AdapterError,
     AdapterProgress,
+    AdapterCheckpoint,
     Chunk,
     DatasetNotFoundError,
     SimulationData,
@@ -42,6 +43,37 @@ class NeuronResult(SimulationResult):
             segment.analogsignals.append(
                 AnalogSignal(list(v), sampling_period=p.dt * ms, **annotations)
             )
+            # Free the memory
+            print(f"Size V vec: {v.size()}")
+            v.remove(0, v.size() - 1)
+
+        self.create_recorder(flush)
+
+    def record_lfp(self, obj_list, matrices, **annotations):
+        from patch import p
+        from quantities import ms
+
+        v_list = [[p.record(obj) for obj in location_list] for location_list in obj_list]
+
+        def flush(segment):
+            if "units" not in annotations.keys():
+                annotations["units"] = "mV"
+
+            V = sum(
+                [
+                    np.array(matrices[cell_id]) @ np.array(v_list[cell_id])
+                    for cell_id in range(len(obj_list))
+                ]
+            )
+            # Need to flatten the array to pass AnalogSignal -> V_flat should be something like: [(mea array at time 0), (mea array at time 1)...(final mea array)]
+            V_flat = V.flatten(order="F")
+            segment.analogsignals.append(
+                AnalogSignal(V_flat, sampling_period=p.dt * ms, **annotations)
+            )
+            # Free the memory of the Vectors
+            for location_list in v_list:
+                for obj in location_list:
+                    obj.remove(0, obj.size() - 1)
 
         self.create_recorder(flush)
 
@@ -120,11 +152,19 @@ class NeuronAdapter(SimulatorAdapter):
             self.engine.finitialize(self.initial)
             duration = max(sim.duration for sim in simulations)
             progress = AdapterProgress(duration)
-            for oi, i in progress.steps(step=1):
+            progress_step = 1
+            checkpoint = AdapterCheckpoint(simulations)
+            minimum_step = checkpoint.suitable_step(progress_step)
+            for oi, i in progress.steps(step=minimum_step):
                 pc.psolve(i)
                 tick = progress.tick(i)
                 for listener in self._progress_listeners:
                     listener(simulations, tick)
+                if checkpoint.get_status(i):
+                    [
+                        self.simdata[sim].result.flush()
+                        for sim in checkpoint.checkpoints[i]
+                    ]
             progress.complete()
             report("Finished simulation.", level=2)
         finally:
