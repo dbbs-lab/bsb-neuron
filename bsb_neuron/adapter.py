@@ -36,10 +36,6 @@ class NeuronResult(SimulationResult):
         from quantities import ms
 
         v = p.record(obj)
-        # if "M" in annotations.keys():
-        #     M = annotations["M"]
-        #     print(M.shape)
-        #     v = M @ np.array(v, dtype=float, ndmin=2)
 
         def flush(segment):
             if "units" not in annotations.keys():
@@ -47,6 +43,9 @@ class NeuronResult(SimulationResult):
             segment.analogsignals.append(
                 AnalogSignal(list(v), sampling_period=p.dt * ms, **annotations)
             )
+            # Free the memory
+            print(f"Size V vec: {v.size()}")
+            v.remove(0, v.size() - 1)
 
         self.create_recorder(flush)
 
@@ -71,6 +70,10 @@ class NeuronResult(SimulationResult):
             segment.analogsignals.append(
                 AnalogSignal(V_flat, sampling_period=p.dt * ms, **annotations)
             )
+            # Free the memory of the Vectors
+            for location_list in v_list:
+                for obj in location_list:
+                    obj.remove(0, obj.size() - 1)
 
         self.create_recorder(flush)
 
