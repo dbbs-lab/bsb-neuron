@@ -14,7 +14,7 @@ from bsb import (
     SimulatorAdapter,
     report,
 )
-from neo import AnalogSignal
+from neo import AnalogSignal, SpikeTrain
 
 if typing.TYPE_CHECKING:
     from bsb import Simulation
@@ -30,6 +30,36 @@ class NeuronSimulationData(SimulationData):
 
 
 class NeuronResult(SimulationResult):
+
+    def record_spike(
+        self, time_vect, id_vect, cell_model_id, loc_label_id, locs_ids, **annotations
+    ):
+        def flush(segment):
+            if "units" not in annotations.keys():
+                annotations["units"] = "ms"
+            if cell_model_id:
+                segment.spiketrains.append(
+                    SpikeTrain(
+                        np.array(time_vect) if len(time_vect) > 0 else [],
+                        gids=np.array(id_vect) if len(id_vect) > 0 else [],
+                        array_annotations={
+                            "senders": np.array([cell_model_id[gid] for gid in id_vect])
+                        },
+                        labels=np.array([loc_label_id[gid] for gid in id_vect]),
+                        loc=np.array([locs_ids[gid] for gid in id_vect]),
+                        **annotations,
+                    )
+                )
+            else:
+                segment.spiketrains.append(
+                    SpikeTrain(
+                        np.array(time_vect) if len(time_vect) > 0 else [],
+                        **annotations,
+                    )
+                )
+
+        self.create_recorder(flush)
+
     def record(self, obj, **annotations):
         from patch import p
         from quantities import ms
