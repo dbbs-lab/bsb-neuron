@@ -109,7 +109,7 @@ class TestSpikeRecorder(
         adapter = get_simulation_adapter(sim.simulator)
         simdata = adapter.prepare(sim)
         results = adapter.run(sim)
-        result = adapter.collect(sim, simdata, results[0])
+        result = adapter.collect(results)[0]
         pop_lenghts = []
         ids = []
         for cm in sim.cell_models:
@@ -152,7 +152,7 @@ class TestSpikeRecorder(
         adapter = get_simulation_adapter(sim.simulator)
         simdata = adapter.prepare(sim)
         results = adapter.run(sim)
-        result = adapter.collect(sim, simdata, results[0])
+        result = adapter.collect(results)[0]
         self.assertEqual(
             len(result.spiketrains),
             3,

@@ -1,6 +1,7 @@
 import numpy as np
 from bsb import LocationTargetting, config
 from patch import p
+from patch.objects import Vector
 
 from ..device import NeuronDevice
 
@@ -21,31 +22,20 @@ class SpikeRecorder(NeuronDevice, classmap_entry="spike_recorder"):
     locations = config.attr(type=LocationTargetting, default={"strategy": "soma"})
     join_population = config.attr(type=bool, default=False)
 
-    def check_netcon(self, adapter, target, location):
-        # Insert a NetCon (if not already present) and retrieve its gid
-        if hasattr(location.section, "_transmitter"):
-            gid = location.section._transmitter.gid
-        else:
-            gid = target.insert_transmitter(
-                adapter.next_gid, location._loc, delay=1, weight=0.0004
-            ).gid
-            adapter.next_gid += 1
-        return gid
-
     def implement(self, adapter, simulation, simdata):
         for model, pop in self.targetting.get_targets(
             adapter, simulation, simdata
         ).items():
             if self.join_population:
-                spike_times = p.parallel._interpreter.Vector()
-                neuron_gids = p.parallel._interpreter.Vector()
+                spike_times = p.parallel.Vector
+                neuron_gids = p.parallel.Vector
                 gids_to_cell = {}
                 gids_to_labels = {}
                 gids_to_locs = {}
                 for target in pop:
                     for location in self.locations.get_locations(target):
 
-                        gid = self.check_netcon(adapter, target, location)
+                        gid = target.check_netcon(location, adapter)
                         # Call record_spike() method on selected gid using common spike_times and neuron_gids Vector for
                         # cells in the same population
                         gids_to_cell[gid] = target.id
@@ -70,7 +60,7 @@ class SpikeRecorder(NeuronDevice, classmap_entry="spike_recorder"):
             else:  # We are splitting the outputs
                 for target in pop:
                     for location in self.locations.get_locations(target):
-                        gid = self.check_netcon(adapter, target, location)
+                        gid = target.check_netcon(location, adapter)
 
                         # Call record_spike() method on selected gid, it will build a SpikeTrain obj for every location
                         spike_times, neuron_gids = p.parallel.spike_record(gid)
